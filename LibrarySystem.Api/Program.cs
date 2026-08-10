@@ -1,4 +1,18 @@
+using LibrarySystem.Infrastructure.Identity;
+using LibrarySystem.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDbContext<LibraryDbContext>(options =>
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services
+    .AddIdentity<ApplicationUser, Microsoft.AspNetCore.Identity.IdentityRole>()
+    .AddEntityFrameworkStores<LibraryDbContext>()
+    .AddDefaultTokenProviders();
 
 // Add services to the container.
 
@@ -15,6 +29,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseAuthentication();
 
 app.UseAuthorization();
 
