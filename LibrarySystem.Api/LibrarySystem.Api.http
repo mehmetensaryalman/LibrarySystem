@@ -1,6 +1,19 @@
-@LibrarySystem.Api_HostAddress = http://localhost:5017
+@LibrarySystem.Api_HostAddress = https://localhost:7008
 
-GET {{LibrarySystem.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+### Register
+POST {{LibrarySystem.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
 
-###
+{
+  "email": "test@example.com",
+  "password": "Test123"
+}
+
+### Login
+POST {{LibrarySystem.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "Test123"
+}
