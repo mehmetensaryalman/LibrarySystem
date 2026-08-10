@@ -1,3 +1,9 @@
+using LibrarySystem.Application.Interfaces.Borrow;
+using LibrarySystem.Application.Services.Borrow;
+using LibrarySystem.Application.Interfaces.Books;
+using LibrarySystem.Application.Interfaces.Repositories;
+using LibrarySystem.Application.Services.Books;
+using LibrarySystem.Infrastructure.Repositories;
 using System.Text;
 using LibrarySystem.Application.Interfaces.Auth;
 using LibrarySystem.Infrastructure.Identity;
@@ -54,6 +60,12 @@ builder.Services.AddScoped<IJwtTokenService>(_ =>
         expirationMinutes));
 
 builder.Services.AddScoped<IAuthService, AuthService>();
+
+builder.Services.AddScoped<IBookRepository, BookRepository>();
+builder.Services.AddScoped<IBookService, BookService>();
+
+builder.Services.AddScoped<IBorrowRepository, BorrowRepository>();
+builder.Services.AddScoped<IBorrowService, BorrowService>();
 
 builder.Services
     .AddAuthentication(options =>
