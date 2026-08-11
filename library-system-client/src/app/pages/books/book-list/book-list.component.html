@@ -1,0 +1,77 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1>Kütüphane Sistemi</h1>
+      <p>Kitap Listesi</p>
+    </div>
+
+    <div class="header-actions">
+      <p-button
+        label="Benim Kitaplarım"
+        (onClick)="goToMyBooks()"
+      ></p-button>
+
+      <p-button
+        label="Çıkış Yap"
+        severity="secondary"
+        (onClick)="logout()"
+      ></p-button>
+    </div>
+  </header>
+
+  @if (errorMessage()) {
+    <div class="error-message">
+      {{ errorMessage() }}
+    </div>
+  }
+
+  @if (successMessage()) {
+    <div class="success-message">
+      {{ successMessage() }}
+    </div>
+  }
+
+  <div class="table-card">
+    <p-table
+      [value]="books()"
+      [loading]="loading()"
+      [tableStyle]="{ 'min-width': '60rem' }"
+    >
+      <ng-template #header>
+        <tr>
+          <th>ID</th>
+          <th>Kitap</th>
+          <th>Yazar</th>
+          <th>Stok</th>
+          <th>İşlem</th>
+        </tr>
+      </ng-template>
+
+      <ng-template #body let-book>
+        <tr>
+          <td>{{ book.id }}</td>
+          <td>{{ book.name }}</td>
+          <td>{{ book.author }}</td>
+          <td>{{ book.stock }}</td>
+
+          <td>
+            <p-button
+              label="Ödünç Al"
+              [disabled]="book.stock <= 0"
+              [loading]="borrowingBookId() === book.id"
+              (onClick)="borrowBook(book)"
+            ></p-button>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template #emptymessage>
+        <tr>
+          <td colspan="5">
+            Henüz kitap bulunmuyor.
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>

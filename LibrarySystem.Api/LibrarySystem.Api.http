@@ -1,5 +1,6 @@
 @LibrarySystem.Api_HostAddress = https://localhost:7008
 @token = PASTE_LOGIN_TOKEN_HERE
+
 ### Register
 POST {{LibrarySystem.Api_HostAddress}}/api/auth/register
 Content-Type: application/json
@@ -8,6 +9,7 @@ Content-Type: application/json
   "email": "test@example.com",
   "password": "Test123"
 }
+
 
 ### Login
 POST {{LibrarySystem.Api_HostAddress}}/api/auth/login
@@ -18,12 +20,14 @@ Content-Type: application/json
   "password": "Test123"
 }
 
+
 ### Get All Books
 GET {{LibrarySystem.Api_HostAddress}}/api/books
 
 
 ### Create Book
 POST {{LibrarySystem.Api_HostAddress}}/api/books
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
@@ -34,7 +38,9 @@ Content-Type: application/json
 
 
 ### Delete Book
-DELETE {{LibrarySystem.Api_HostAddress}}/api/books/1
+DELETE {{LibrarySystem.Api_HostAddress}}/api/books/2
+Authorization: Bearer {{token}}
+
 
 ### Borrow Book
 POST {{LibrarySystem.Api_HostAddress}}/api/borrow/2
@@ -50,8 +56,10 @@ Authorization: Bearer {{token}}
 POST {{LibrarySystem.Api_HostAddress}}/api/return/2
 Authorization: Bearer {{token}}
 
+
 ### Borrow Without Token
 POST {{LibrarySystem.Api_HostAddress}}/api/borrow/2
+
 
 ### Create Out Of Stock Book
 POST {{LibrarySystem.Api_HostAddress}}/api/books
@@ -63,6 +71,7 @@ Content-Type: application/json
   "author": "Test Yazar",
   "stock": 0
 }
+
 
 ### Borrow Out Of Stock Book
 POST {{LibrarySystem.Api_HostAddress}}/api/borrow/3

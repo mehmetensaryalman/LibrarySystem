@@ -1,0 +1,48 @@
+<div class="auth-page">
+  <form
+    class="auth-card"
+    (ngSubmit)="login()"
+  >
+    <h1>Kütüphane Sistemi</h1>
+    <h2>Giriş Yap</h2>
+
+    <label for="email">E-posta</label>
+
+    <input
+      id="email"
+      name="email"
+      pInputText
+      type="email"
+      [(ngModel)]="email"
+      placeholder="ornek@mail.com"
+    />
+
+    <label for="password">Parola</label>
+
+    <p-password
+      inputId="password"
+      name="password"
+      [(ngModel)]="password"
+      [feedback]="false"
+      [toggleMask]="true"
+      placeholder="Parolanız"
+    ></p-password>
+
+    @if (errorMessage()) {
+      <div class="error-message">
+        {{ errorMessage() }}
+      </div>
+    }
+
+    <p-button
+      type="submit"
+      label="Giriş Yap"
+      [loading]="loading()"
+    ></p-button>
+
+    <p>
+      Hesabın yok mu?
+      <a routerLink="/register">Kayıt Ol</a>
+    </p>
+  </form>
+</div>

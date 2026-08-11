@@ -1,0 +1,37 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import {
+  BorrowedBook,
+  OperationResult
+} from '../models/borrow.models';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class BorrowService {
+  private readonly apiUrl = 'https://localhost:7008/api';
+
+  constructor(private readonly http: HttpClient) {
+  }
+
+  borrow(bookId: number): Observable<OperationResult> {
+    return this.http.post<OperationResult>(
+      `${this.apiUrl}/borrow/${bookId}`,
+      {}
+    );
+  }
+
+  returnBook(bookId: number): Observable<OperationResult> {
+    return this.http.post<OperationResult>(
+      `${this.apiUrl}/return/${bookId}`,
+      {}
+    );
+  }
+
+  getMyBooks(): Observable<BorrowedBook[]> {
+    return this.http.get<BorrowedBook[]>(
+      `${this.apiUrl}/borrow/my-books`
+    );
+  }
+}

@@ -7,6 +7,8 @@ namespace LibrarySystem.Application.Services.Borrow;
 
 public class BorrowService : IBorrowService
 {
+    private const int BorrowDurationDays = 7;
+
     private readonly IBorrowRepository _borrowRepository;
 
     public BorrowService(IBorrowRepository borrowRepository)
@@ -104,6 +106,7 @@ public class BorrowService : IBorrowService
         }
 
         activeBorrow.IsReturned = true;
+        activeBorrow.ReturnDate = DateTime.UtcNow;
         book.Stock++;
 
         await _borrowRepository.SaveChangesAsync();
@@ -116,20 +119,40 @@ public class BorrowService : IBorrowService
     }
 
     public async Task<List<BorrowedBookResponseDto>> GetMyBooksAsync(
-        string userId)
+    string userId)
     {
         var borrowRecords =
             await _borrowRepository.GetUserBorrowsAsync(userId);
 
         return borrowRecords
-            .Select(record => new BorrowedBookResponseDto
+            .Select(record =>
             {
-                BorrowRecordId = record.Id,
-                BookId = record.BookId,
-                BookName = record.Book.Name,
-                Author = record.Book.Author,
-                BorrowDate = record.BorrowDate,
-                IsReturned = record.IsReturned
+                var borrowDateUtc =
+                    DateTime.SpecifyKind(
+                        record.BorrowDate,
+                        DateTimeKind.Utc);
+
+                DateTime? returnDateUtc = null;
+
+                if (record.ReturnDate.HasValue)
+                {
+                    returnDateUtc =
+                        DateTime.SpecifyKind(
+                            record.ReturnDate.Value,
+                            DateTimeKind.Utc);
+                }
+
+                return new BorrowedBookResponseDto
+                {
+                    BorrowRecordId = record.Id,
+                    BookId = record.BookId,
+                    BookName = record.Book.Name,
+                    Author = record.Book.Author,
+                    BorrowDate = borrowDateUtc,
+                    DueDate = borrowDateUtc.AddDays(BorrowDurationDays),
+                    ReturnDate = returnDateUtc,
+                    IsReturned = record.IsReturned
+                };
             })
             .ToList();
     }
