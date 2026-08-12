@@ -139,6 +139,7 @@
                 <th>Ödünç Alma Tarihi</th>
                 <th>Teslim Edilen Tarih</th>
                 <th>Durum</th>
+                <th>Teslim Durumu</th>
               </tr>
             </ng-template>
 
@@ -167,12 +168,15 @@
                 <td>
                   İade Edildi
                 </td>
+                <td>
+                {{ getDeliveryStatus(book) }}
+                </td>
               </tr>
             </ng-template>
 
             <ng-template #emptymessage>
               <tr>
-                <td colspan="5">
+                <td colspan="6">
                   Henüz geçmiş bir iade kaydınız bulunmuyor.
                 </td>
               </tr>

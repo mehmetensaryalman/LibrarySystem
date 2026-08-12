@@ -55,11 +55,14 @@ public class BorrowService : IBorrowService
             };
         }
 
+        var borrowDate = DateTime.UtcNow;
+
         var borrowRecord = new BorrowRecord
         {
             UserId = userId,
             BookId = bookId,
-            BorrowDate = DateTime.UtcNow,
+            BorrowDate = borrowDate,
+            DueDate = borrowDate.AddDays(BorrowDurationDays),
             IsReturned = false
         };
 
@@ -132,6 +135,11 @@ public class BorrowService : IBorrowService
                         record.BorrowDate,
                         DateTimeKind.Utc);
 
+                var dueDateUtc =
+                    DateTime.SpecifyKind(
+                        record.DueDate,
+                        DateTimeKind.Utc);
+
                 DateTime? returnDateUtc = null;
 
                 if (record.ReturnDate.HasValue)
@@ -149,7 +157,7 @@ public class BorrowService : IBorrowService
                     BookName = record.Book.Name,
                     Author = record.Book.Author,
                     BorrowDate = borrowDateUtc,
-                    DueDate = borrowDateUtc.AddDays(BorrowDurationDays),
+                    DueDate = dueDateUtc,
                     ReturnDate = returnDateUtc,
                     IsReturned = record.IsReturned
                 };

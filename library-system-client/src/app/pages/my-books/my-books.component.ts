@@ -78,28 +78,59 @@ export class MyBooksComponent implements OnInit {
   }
 
   getRemainingTime(book: BorrowedBook): string {
-    if (book.isReturned) {
-      return '-';
-    }
-
-    const now = new Date();
-    const dueDate = new Date(book.dueDate);
-
-    const difference =
-      dueDate.getTime() - now.getTime();
-
-    if (difference <= 0) {
-      return 'Süresi doldu';
-    }
-
-    const millisecondsPerDay =
-      1000 * 60 * 60 * 24;
-
-    const remainingDays =
-      Math.ceil(difference / millisecondsPerDay);
-
-    return `${remainingDays} gün kaldı`;
+  if (book.isReturned) {
+    return '-';
   }
+
+  const now = new Date();
+  const dueDate = new Date(book.dueDate);
+
+  const difference =
+    dueDate.getTime() - now.getTime();
+
+  const millisecondsPerDay =
+    1000 * 60 * 60 * 24;
+
+  if (difference < 0) {
+    const overdueDays =
+      Math.ceil(
+        Math.abs(difference) / millisecondsPerDay
+      );
+
+    return `${overdueDays} gün gecikti`;
+  }
+
+  const remainingDays =
+    Math.ceil(
+      difference / millisecondsPerDay
+    );
+
+  return `${remainingDays} gün kaldı`;
+}
+
+  getDeliveryStatus(book: BorrowedBook): string {
+  if (!book.returnDate) {
+    return 'Bilgi Yok';
+  }
+
+  const dueDate = new Date(book.dueDate);
+  const returnDate = new Date(book.returnDate);
+
+  if (returnDate.getTime() <= dueDate.getTime()) {
+    return 'Zamanında';
+  }
+
+  const millisecondsPerDay =
+    1000 * 60 * 60 * 24;
+
+  const delay =
+    returnDate.getTime() - dueDate.getTime();
+
+  const delayedDays =
+    Math.ceil(delay / millisecondsPerDay);
+
+  return `${delayedDays} gün gecikmeli`;
+}
 
   returnBook(book: BorrowedBook): void {
     this.errorMessage.set('');

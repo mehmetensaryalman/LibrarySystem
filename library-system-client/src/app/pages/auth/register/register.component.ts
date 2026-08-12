@@ -35,9 +35,32 @@ export class RegisterComponent {
     this.errorMessage.set('');
     this.successMessage.set('');
 
-    if (!this.email || !this.password) {
+    const email = this.email.trim();
+
+    if (!email) {
       this.errorMessage.set(
-        'E-posta ve parola zorunludur.'
+        'E-posta adresi zorunludur.'
+      );
+      return;
+    }
+
+    if (!this.isValidEmail(email)) {
+      this.errorMessage.set(
+        'Geçerli bir e-posta adresi girin.'
+      );
+      return;
+    }
+
+    if (!this.password) {
+      this.errorMessage.set(
+        'Şifre zorunludur.'
+      );
+      return;
+    }
+
+    if (this.password.length < 6) {
+      this.errorMessage.set(
+        'Şifre en az 6 karakter olmalıdır.'
       );
       return;
     }
@@ -46,7 +69,7 @@ export class RegisterComponent {
 
     this.authService
       .register({
-        email: this.email,
+        email,
         password: this.password
       })
       .subscribe({
@@ -59,8 +82,7 @@ export class RegisterComponent {
           }
 
           this.successMessage.set(
-            result.message ||
-            'Kullanıcı başarıyla kaydedildi.'
+            result.message
           );
 
           this.email = '';
@@ -75,5 +97,12 @@ export class RegisterComponent {
           );
         }
       });
+  }
+
+  private isValidEmail(email: string): boolean {
+    const emailPattern =
+      /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/;
+
+    return emailPattern.test(email);
   }
 }

@@ -1,31 +1,58 @@
-import { HttpInterceptorFn } from '@angular/common/http';
+import {
+  HttpErrorResponse,
+  HttpInterceptorFn
+} from '@angular/common/http';
+import { inject } from '@angular/core';
+import { Router } from '@angular/router';
+import {
+  catchError,
+  throwError
+} from 'rxjs';
 
-export const authInterceptor: HttpInterceptorFn = (
-  request,
-  next
-) => {
-  const token = localStorage.getItem('library_token');
+export const authInterceptor: HttpInterceptorFn =
+  (request, next) => {
+    const router = inject(Router);
 
-  const isAuthRequest =
-    request.url.includes('/api/auth/');
+    const token =
+      localStorage.getItem('library_token');
 
-  const isPublicBooksRequest =
-    request.method === 'GET' &&
-    request.url.endsWith('/api/books');
+    const isAuthRequest =
+      request.url.includes('/api/auth/');
 
-  if (
-    !token ||
-    isAuthRequest ||
-    isPublicBooksRequest
-  ) {
-    return next(request);
-  }
+    const isPublicBooksRequest =
+      request.method === 'GET' &&
+      request.url.endsWith('/api/books');
 
-  const authenticatedRequest = request.clone({
-    setHeaders: {
-      Authorization: `Bearer ${token}`
+    let outgoingRequest = request;
+
+    if (
+      token &&
+      !isAuthRequest &&
+      !isPublicBooksRequest
+    ) {
+      outgoingRequest = request.clone({
+        setHeaders: {
+          Authorization: `Bearer ${token}`
+        }
+      });
     }
-  });
 
-  return next(authenticatedRequest);
-};
+    return next(outgoingRequest).pipe(
+      catchError(
+        (error: HttpErrorResponse) => {
+          if (
+            error.status === 401 &&
+            !isAuthRequest
+          ) {
+            localStorage.removeItem(
+              'library_token'
+            );
+
+            void router.navigate(['/login']);
+          }
+
+          return throwError(() => error);
+        }
+      )
+    );
+  };

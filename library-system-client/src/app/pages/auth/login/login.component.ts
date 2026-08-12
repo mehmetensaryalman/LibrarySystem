@@ -32,41 +32,64 @@ export class LoginComponent {
   }
 
   login(): void {
-  this.errorMessage.set('');
+    this.errorMessage.set('');
 
-  if (!this.email || !this.password) {
-    this.errorMessage.set(
-      'E-posta ve parola zorunludur.'
-    );
-    return;
+    const email = this.email.trim();
+
+    if (!email) {
+      this.errorMessage.set(
+        'E-posta adresi zorunludur.'
+      );
+      return;
+    }
+
+    if (!this.isValidEmail(email)) {
+      this.errorMessage.set(
+        'Geçerli bir e-posta adresi girin.'
+      );
+      return;
+    }
+
+    if (!this.password) {
+      this.errorMessage.set(
+        'Şifre zorunludur.'
+      );
+      return;
+    }
+
+    this.loading.set(true);
+
+    this.authService
+      .login({
+        email,
+        password: this.password
+      })
+      .subscribe({
+        next: result => {
+          this.loading.set(false);
+
+          if (result.success) {
+            this.router.navigate(['/books']);
+            return;
+          }
+
+          this.errorMessage.set(result.message);
+        },
+        error: error => {
+          this.loading.set(false);
+
+          this.errorMessage.set(
+            error.error?.message ??
+            'E-posta veya şifre hatalı.'
+          );
+        }
+      });
   }
 
-  this.loading.set(true);
+  private isValidEmail(email: string): boolean {
+    const emailPattern =
+      /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/;
 
-  this.authService
-    .login({
-      email: this.email,
-      password: this.password
-    })
-    .subscribe({
-      next: result => {
-        this.loading.set(false);
-
-        if (result.success) {
-          this.router.navigate(['/books']);
-          return;
-        }
-
-        this.errorMessage.set(result.message);
-      },
-      error: error => {
-        this.loading.set(false);
-
-        this.errorMessage.set(
-          error.error?.message ??
-          'Giriş sırasında bir hata oluştu.'
-        );
-      }
-    });
+    return emailPattern.test(email);
   }
 }

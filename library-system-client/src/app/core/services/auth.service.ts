@@ -11,20 +11,26 @@ import {
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly apiUrl = 'https://localhost:7008/api/auth';
+  private readonly apiUrl =
+    'https://localhost:7008/api/auth';
+
   private readonly tokenKey = 'library_token';
 
   constructor(private readonly http: HttpClient) {
   }
 
-  register(request: RegisterRequest): Observable<AuthResult> {
+  register(
+    request: RegisterRequest
+  ): Observable<AuthResult> {
     return this.http.post<AuthResult>(
       `${this.apiUrl}/register`,
       request
     );
   }
 
-  login(request: LoginRequest): Observable<AuthResult> {
+  login(
+    request: LoginRequest
+  ): Observable<AuthResult> {
     return this.http
       .post<AuthResult>(
         `${this.apiUrl}/login`,
@@ -47,10 +53,63 @@ export class AuthService {
   }
 
   isLoggedIn(): boolean {
-    return this.getToken() !== null;
+    const token = this.getToken();
+
+    if (!token) {
+      return false;
+    }
+
+    const expirationTime =
+      this.getTokenExpirationTime(token);
+
+    if (
+      expirationTime === null ||
+      expirationTime <= Date.now()
+    ) {
+      this.logout();
+      return false;
+    }
+
+    return true;
   }
 
   logout(): void {
     localStorage.removeItem(this.tokenKey);
+  }
+
+  private getTokenExpirationTime(
+    token: string
+  ): number | null {
+    try {
+      const parts = token.split('.');
+
+      if (parts.length !== 3) {
+        return null;
+      }
+
+      let payload = parts[1]
+        .replace(/-/g, '+')
+        .replace(/_/g, '/');
+
+      const padding =
+        payload.length % 4;
+
+      if (padding) {
+        payload += '='.repeat(4 - padding);
+      }
+
+      const decodedPayload =
+        JSON.parse(atob(payload));
+
+      if (
+        typeof decodedPayload.exp !== 'number'
+      ) {
+        return null;
+      }
+
+      return decodedPayload.exp * 1000;
+    } catch {
+      return null;
+    }
   }
 }
