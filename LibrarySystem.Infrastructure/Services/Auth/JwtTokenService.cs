@@ -27,19 +27,43 @@ public class JwtTokenService : IJwtTokenService
 
     public (string Token, DateTime ExpiresAt) GenerateToken(
         string userId,
-        string email)
+        string email,
+        IEnumerable<string> roles)
     {
         var now = DateTime.UtcNow;
-        var expiresAt = now.AddMinutes(_expirationMinutes);
+        var expiresAt =
+            now.AddMinutes(_expirationMinutes);
 
         var claims = new List<Claim>
         {
-            new(JwtRegisteredClaimNames.Sub, userId),
-            new(ClaimTypes.NameIdentifier, userId),
-            new(JwtRegisteredClaimNames.Email, email),
-            new(ClaimTypes.Email, email),
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            new(
+                JwtRegisteredClaimNames.Sub,
+                userId),
+
+            new(
+                ClaimTypes.NameIdentifier,
+                userId),
+
+            new(
+                JwtRegisteredClaimNames.Email,
+                email),
+
+            new(
+                ClaimTypes.Email,
+                email),
+
+            new(
+                JwtRegisteredClaimNames.Jti,
+                Guid.NewGuid().ToString())
         };
+
+        foreach (var role in roles)
+        {
+            claims.Add(
+                new Claim(
+                    ClaimTypes.Role,
+                    role));
+        }
 
         var securityKey =
             new SymmetricSecurityKey(
@@ -50,19 +74,23 @@ public class JwtTokenService : IJwtTokenService
                 securityKey,
                 SecurityAlgorithms.HmacSha256);
 
-        var tokenDescriptor = new SecurityTokenDescriptor
-        {
-            Subject = new ClaimsIdentity(claims),
-            Issuer = _issuer,
-            Audience = _audience,
-            NotBefore = now,
-            Expires = expiresAt,
-            SigningCredentials = signingCredentials
-        };
+        var tokenDescriptor =
+            new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(claims),
+                Issuer = _issuer,
+                Audience = _audience,
+                NotBefore = now,
+                Expires = expiresAt,
+                SigningCredentials = signingCredentials
+            };
 
-        var tokenHandler = new JsonWebTokenHandler();
+        var tokenHandler =
+            new JsonWebTokenHandler();
 
-        var token = tokenHandler.CreateToken(tokenDescriptor);
+        var token =
+            tokenHandler.CreateToken(
+                tokenDescriptor);
 
         return (token, expiresAt);
     }

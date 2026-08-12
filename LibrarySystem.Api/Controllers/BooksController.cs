@@ -2,6 +2,7 @@
 using LibrarySystem.Application.DTOs.Books;
 using LibrarySystem.Application.Interfaces.Books;
 using Microsoft.AspNetCore.Mvc;
+using LibrarySystem.Application.Common.Constants;
 
 namespace LibrarySystem.Api.Controllers;
 
@@ -24,7 +25,7 @@ public class BooksController : ControllerBase
         return Ok(books);
     }
 
-    [Authorize]
+    [Authorize(Roles = RoleNames.Admin)]
     [HttpPost]
     public async Task<IActionResult> Create(
         CreateBookRequestDto request)
@@ -34,7 +35,7 @@ public class BooksController : ControllerBase
         return Ok(book);
     }
 
-    [Authorize]
+    [Authorize(Roles = RoleNames.Admin)]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {

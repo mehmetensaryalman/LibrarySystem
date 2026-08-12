@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using LibrarySystem.Infrastructure.Seed;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -115,6 +116,25 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager =
+        scope.ServiceProvider
+            .GetRequiredService<RoleManager<IdentityRole>>();
+
+    var userManager =
+        scope.ServiceProvider
+            .GetRequiredService<UserManager<ApplicationUser>>();
+
+    await IdentitySeeder.SeedRolesAsync(
+        roleManager);
+
+    await IdentitySeeder.SeedAdminAsync(
+        userManager,
+        app.Configuration["AdminSeed:Email"],
+        app.Configuration["AdminSeed:Password"]);
+}
 
 if (app.Environment.IsDevelopment())
 {

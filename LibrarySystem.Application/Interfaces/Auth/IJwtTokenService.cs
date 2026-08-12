@@ -4,5 +4,6 @@ public interface IJwtTokenService
 {
     (string Token, DateTime ExpiresAt) GenerateToken(
         string userId,
-        string email);
+        string email,
+        IEnumerable<string> roles);
 }
