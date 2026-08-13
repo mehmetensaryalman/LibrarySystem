@@ -11,3 +11,82 @@ body {
 body {
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* UYGULAMA GENEL ANA BUTON STİLİ */
+
+.app-primary-button.p-button {
+  background: #0f9f8f;
+  border-color: #0f9f8f;
+  color: #ffffff;
+
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.app-primary-button.p-button:not(:disabled):hover {
+  background: #0b7f73;
+  border-color: #0b7f73;
+
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 6px 16px
+    rgba(15, 159, 143, 0.2);
+}
+
+
+/* UYGULAMA GENEL ÇIKIŞ BUTONU */
+
+.app-logout-button.p-button {
+  background: #e2e8f0;
+  border-color: #e2e8f0;
+  color: #334155;
+
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.app-logout-button.p-button:not(:disabled):hover {
+  background: #cbd5e1;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+
+/* SAĞ ALT ANA AKSİYON BUTONU */
+
+.app-floating-button.p-button {
+  min-height: 3rem;
+
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+
+  background: #0f9f8f;
+  border-color: #0f9f8f;
+  color: #ffffff;
+
+  box-shadow:
+    0 8px 24px
+    rgba(15, 159, 143, 0.24);
+
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.app-floating-button.p-button:not(:disabled):hover {
+  background: #0b7f73;
+  border-color: #0b7f73;
+
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 10px 28px
+    rgba(15, 159, 143, 0.3);
+}

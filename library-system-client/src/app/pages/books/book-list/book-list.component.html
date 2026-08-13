@@ -6,16 +6,27 @@
     </div>
 
     <div class="header-actions">
-      <p-button
-        label="Benim Kitaplarım"
-        (onClick)="goToMyBooks()"
-      ></p-button>
+
+      @if (isAdmin()) {
+        <p-button
+          label="Admin Yönetim Paneli"
+          styleClass="app-primary-button"
+          (onClick)="goToAdminPanel()"
+        ></p-button>
+      } @else {
+        <p-button
+          label="Benim Kitaplarım"
+          styleClass="app-primary-button"
+          (onClick)="goToMyBooks()"
+        ></p-button>
+      }
 
       <p-button
         label="Çıkış Yap"
-        severity="secondary"
+        styleClass="app-logout-button"
         (onClick)="logout()"
       ></p-button>
+
     </div>
   </header>
 
@@ -35,7 +46,10 @@
     <p-table
       [value]="books()"
       [loading]="loading()"
-      [tableStyle]="{ 'min-width': '60rem' }"
+      [tableStyle]="{
+        'width': '100%',
+        'min-width': '65rem'
+      }"
     >
       <ng-template #header>
         <tr>
@@ -49,18 +63,56 @@
 
       <ng-template #body let-book>
         <tr>
-          <td>{{ book.id }}</td>
-          <td>{{ book.name }}</td>
-          <td>{{ book.author }}</td>
-          <td>{{ book.stock }}</td>
+          <td>
+            {{ book.id }}
+          </td>
 
           <td>
-            <p-button
-              label="Ödünç Al"
-              [disabled]="book.stock <= 0"
-              [loading]="borrowingBookId() === book.id"
-              (onClick)="borrowBook(book)"
-            ></p-button>
+            {{ book.name }}
+          </td>
+
+          <td>
+            {{ book.author }}
+          </td>
+
+          <td>
+            {{ book.stock }}
+          </td>
+
+          <td>
+            <div class="row-actions">
+
+              @if (!isAdmin()) {
+                <p-button
+                  label="Ödünç Al"
+                  [disabled]="book.stock <= 0"
+                  [loading]="
+                    borrowingBookId() === book.id
+                  "
+                  (onClick)="borrowBook(book)"
+                ></p-button>
+              }
+
+              @if (isAdmin()) {
+
+                <p-button
+                  label="Düzenle"
+                  severity="secondary"
+                  (onClick)="openEditDialog(book)"
+                ></p-button>
+
+                <p-button
+                  label="Kaldır"
+                  severity="danger"
+                  [loading]="
+                    deletingBookId() === book.id
+                  "
+                  (onClick)="confirmDelete(book)"
+                ></p-button>
+
+              }
+
+            </div>
           </td>
         </tr>
       </ng-template>
@@ -72,6 +124,197 @@
           </td>
         </tr>
       </ng-template>
+
     </p-table>
   </div>
 </div>
+
+
+<!-- ADMIN: SAĞ ALT KİTAP EKLE BUTONU -->
+
+@if (isAdmin()) {
+  <div class="floating-create-book-button">
+    <p-button
+      label="Kitap Ekle"
+      styleClass="app-floating-button"
+      (onClick)="openCreateDialog()"
+    ></p-button>
+  </div>
+}
+
+
+<!-- ADMIN: KİTAP EKLE -->
+
+<p-dialog
+  header="Yeni Kitap Ekle"
+  [(visible)]="createDialogVisible"
+  [modal]="true"
+  [style]="{
+    width: '32rem',
+    maxWidth: '95vw'
+  }"
+>
+  <div class="book-form">
+
+    @if (createDialogErrorMessage) {
+      <div class="dialog-error-message">
+        {{ createDialogErrorMessage }}
+      </div>
+    }
+
+    <div class="form-field">
+      <label for="bookName">
+        Kitap Adı
+      </label>
+
+      <input
+        id="bookName"
+        type="text"
+        pInputText
+        [(ngModel)]="newBookName"
+        autocomplete="off"
+      />
+    </div>
+
+    <div class="form-field">
+      <label for="bookAuthor">
+        Yazar
+      </label>
+
+      <input
+        id="bookAuthor"
+        type="text"
+        pInputText
+        [(ngModel)]="newBookAuthor"
+        autocomplete="off"
+      />
+    </div>
+
+    <div class="form-field">
+      <label for="bookStock">
+        Stok
+      </label>
+
+      <p-inputnumber
+        inputId="bookStock"
+        [(ngModel)]="newBookStock"
+        [min]="0"
+        [step]="1"
+        [minFractionDigits]="0"
+        [maxFractionDigits]="0"
+        [showButtons]="true"
+        [useGrouping]="false"
+      ></p-inputnumber>
+    </div>
+
+    <div class="dialog-actions">
+
+      <p-button
+        label="Vazgeç"
+        severity="secondary"
+        type="button"
+        (onClick)="closeCreateDialog()"
+      ></p-button>
+
+      <p-button
+        label="Kitabı Ekle"
+        type="button"
+        [loading]="creatingBook"
+        (onClick)="createBook()"
+      ></p-button>
+
+    </div>
+
+  </div>
+</p-dialog>
+
+
+<!-- ADMIN: KİTAP DÜZENLE -->
+
+<p-dialog
+  header="Kitabı Düzenle"
+  [(visible)]="editDialogVisible"
+  [modal]="true"
+  [style]="{
+    width: '32rem',
+    maxWidth: '95vw'
+  }"
+>
+  <div class="book-form">
+
+    @if (editDialogErrorMessage) {
+      <div class="dialog-error-message">
+        {{ editDialogErrorMessage }}
+      </div>
+    }
+
+    <div class="form-field">
+      <label for="editBookName">
+        Kitap Adı
+      </label>
+
+      <input
+        id="editBookName"
+        type="text"
+        pInputText
+        [(ngModel)]="editBookName"
+        autocomplete="off"
+      />
+    </div>
+
+    <div class="form-field">
+      <label for="editBookAuthor">
+        Yazar
+      </label>
+
+      <input
+        id="editBookAuthor"
+        type="text"
+        pInputText
+        [(ngModel)]="editBookAuthor"
+        autocomplete="off"
+      />
+    </div>
+
+    <div class="form-field">
+      <label for="editBookStock">
+        Stok
+      </label>
+
+      <p-inputnumber
+        inputId="editBookStock"
+        [(ngModel)]="editBookStock"
+        [min]="0"
+        [step]="1"
+        [minFractionDigits]="0"
+        [maxFractionDigits]="0"
+        [showButtons]="true"
+        [useGrouping]="false"
+      ></p-inputnumber>
+    </div>
+
+    <div class="dialog-actions">
+
+      <p-button
+        label="Vazgeç"
+        severity="secondary"
+        type="button"
+        (onClick)="closeEditDialog()"
+      ></p-button>
+
+      <p-button
+        label="Kaydet"
+        type="button"
+        [loading]="updatingBook"
+        (onClick)="updateBook()"
+      ></p-button>
+
+    </div>
+
+  </div>
+</p-dialog>
+
+
+<!-- ADMIN: KALDIRMA ONAYI -->
+
+<p-confirmdialog></p-confirmdialog>

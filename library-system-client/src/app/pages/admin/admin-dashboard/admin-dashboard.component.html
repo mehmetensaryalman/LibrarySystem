@@ -1,0 +1,72 @@
+<div class="page">
+
+  <header class="page-header">
+
+    <div>
+      <h1>Kütüphane Sistemi</h1>
+      <p>Admin Yönetim Paneli</p>
+    </div>
+
+    <div class="header-actions">
+
+      <p-button
+        label="Kitap Listesi"
+        styleClass="app-primary-button"
+        (onClick)="goToBooks()"
+      ></p-button>
+
+      <p-button
+        label="Çıkış Yap"
+        styleClass="app-logout-button"
+        (onClick)="logout()"
+      ></p-button>
+
+    </div>
+
+  </header>
+
+
+  <div class="dashboard">
+
+    <div class="dashboard-card">
+
+      <div>
+        <h2>Ödünç Yönetimi</h2>
+
+        <p>
+          Sistemdeki tüm kullanıcıların aktif
+          ödünçlerini ve geçmiş iadelerini görüntüleyin.
+        </p>
+      </div>
+
+      <p-button
+        label="Ödünç Yönetimine Git"
+        styleClass="app-primary-button"
+        (onClick)="goToBorrowManagement()"
+      ></p-button>
+
+    </div>
+
+
+    <div class="dashboard-card">
+
+      <div>
+        <h2>Arşiv Yönetimi</h2>
+
+        <p>
+          Arşivlenmiş kitapları görüntüleyin
+          ve gerektiğinde arşivden geri alın.
+        </p>
+      </div>
+
+      <p-button
+        label="Arşiv Yönetimine Git"
+        styleClass="app-primary-button"
+        (onClick)="goToArchiveManagement()"
+      ></p-button>
+
+    </div>
+
+  </div>
+
+</div>

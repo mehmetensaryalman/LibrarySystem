@@ -77,6 +77,55 @@ export class AuthService {
     localStorage.removeItem(this.tokenKey);
   }
 
+  getRoles(): string[] {
+  const token = this.getToken();
+
+  if (!token) {
+    return [];
+  }
+
+  try {
+    const parts = token.split('.');
+
+    if (parts.length !== 3) {
+      return [];
+    }
+
+    let payload = parts[1]
+      .replace(/-/g, '+')
+      .replace(/_/g, '/');
+
+    const padding = payload.length % 4;
+
+    if (padding) {
+      payload += '='.repeat(4 - padding);
+    }
+
+    const decodedPayload = JSON.parse(
+      atob(payload)
+    );
+
+    const roleClaim =
+      decodedPayload[
+        'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'
+      ];
+
+    if (!roleClaim) {
+      return [];
+    }
+
+    return Array.isArray(roleClaim)
+      ? roleClaim
+      : [roleClaim];
+  } catch {
+    return [];
+  }
+}
+
+  isAdmin(): boolean {
+    return this.getRoles().includes('Admin');
+  }
+
   private getTokenExpirationTime(
     token: string
   ): number | null {

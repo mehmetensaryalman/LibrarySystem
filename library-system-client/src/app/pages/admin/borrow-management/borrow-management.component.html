@@ -1,26 +1,36 @@
 <div class="page">
+
   <header class="page-header">
+
     <div>
       <h1>Kütüphane Sistemi</h1>
-      <p>Benim Kitaplarım</p>
+      <p>Ödünç Yönetimi</p>
     </div>
 
     <div class="header-actions">
 
-      <p-button
+    <p-button
+        label="Admin Yönetim Paneli"
+        styleClass="app-primary-button"
+        (onClick)="goToAdminPanel()"
+    ></p-button>
+
+    <p-button
         label="Kitap Listesi"
         styleClass="app-primary-button"
         (onClick)="goToBooks()"
-      ></p-button>
+    ></p-button>
 
-      <p-button
+    <p-button
         label="Çıkış Yap"
         styleClass="app-logout-button"
         (onClick)="logout()"
-      ></p-button>
+    ></p-button>
 
     </div>
+
   </header>
+
 
   @if (errorMessage()) {
     <div class="error-message">
@@ -28,11 +38,6 @@
     </div>
   }
 
-  @if (successMessage()) {
-    <div class="success-message">
-      {{ successMessage() }}
-    </div>
-  }
 
   <div class="tabs-card">
 
@@ -42,70 +47,79 @@
 
         <p-tab value="active">
           Aktif Ödünç Alınan Kitaplar
-          ({{ activeBorrowedBooks().length }})
+          ({{ activeBorrows().length }})
         </p-tab>
 
         <p-tab value="history">
           Geçmiş İadeler
-          ({{ returnedBooks().length }})
+          ({{ returnedBorrows().length }})
         </p-tab>
 
       </p-tablist>
 
+
       <p-tabpanels>
 
-        <!-- AKTİF ÖDÜNÇLER -->
+        <!-- AKTİF ÖDÜNÇ ALINAN KİTAPLAR -->
 
         <p-tabpanel value="active">
 
           <p-table
-            [value]="activeBorrowedBooks()"
+            [value]="activeBorrows()"
             [loading]="loading()"
             [paginator]="
-              activeBorrowedBooks().length > 5
+              activeBorrows().length > 5
             "
             [rows]="5"
             [rowsPerPageOptions]="[5, 10]"
             [scrollable]="true"
             [tableStyle]="{
               'width': '100%',
-              'min-width': '70rem'
+              'min-width': '85rem'
             }"
           >
 
             <ng-template #header>
               <tr>
+                <th>Kullanıcı</th>
                 <th>Kitap</th>
                 <th>Yazar</th>
                 <th>Ödünç Alma Tarihi</th>
                 <th>Son İade Tarihi</th>
                 <th>Durum</th>
                 <th>Kalan Süre</th>
-                <th>İşlem</th>
               </tr>
             </ng-template>
 
-            <ng-template #body let-book>
+
+            <ng-template
+              #body
+              let-borrow
+            >
               <tr>
 
                 <td>
-                  {{ book.bookName }}
+                  {{ borrow.userEmail }}
                 </td>
 
                 <td>
-                  {{ book.author }}
+                  {{ borrow.bookName }}
+                </td>
+
+                <td>
+                  {{ borrow.author }}
                 </td>
 
                 <td>
                   {{
-                    book.borrowDate
+                    borrow.borrowDate
                       | date:'dd.MM.yyyy HH:mm'
                   }}
                 </td>
 
                 <td>
                   {{
-                    book.dueDate
+                    borrow.dueDate
                       | date:'dd.MM.yyyy HH:mm'
                   }}
                 </td>
@@ -115,28 +129,20 @@
                 </td>
 
                 <td>
-                  {{ getRemainingTime(book) }}
-                </td>
-
-                <td>
-                  <p-button
-                    label="İade Et"
-                    severity="secondary"
-                    [loading]="
-                      returningBookId() === book.bookId
-                    "
-                    (onClick)="returnBook(book)"
-                  ></p-button>
+                  {{
+                    getRemainingTime(borrow)
+                  }}
                 </td>
 
               </tr>
             </ng-template>
 
+
             <ng-template #emptymessage>
               <tr>
                 <td colspan="7">
-                  Şu anda ödünç aldığınız aktif
-                  bir kitap bulunmuyor.
+                  Sistemde şu anda aktif olarak
+                  ödünç alınmış bir kitap bulunmuyor.
                 </td>
               </tr>
             </ng-template>
@@ -151,53 +157,70 @@
         <p-tabpanel value="history">
 
           <p-table
-            [value]="returnedBooks()"
+            [value]="returnedBorrows()"
             [loading]="loading()"
             [paginator]="
-              returnedBooks().length > 5
+              returnedBorrows().length > 5
             "
             [rows]="5"
             [rowsPerPageOptions]="[5, 10]"
             [scrollable]="true"
             [tableStyle]="{
               'width': '100%',
-              'min-width': '60rem'
+              'min-width': '85rem'
             }"
           >
 
             <ng-template #header>
               <tr>
+                <th>Kullanıcı</th>
                 <th>Kitap</th>
                 <th>Yazar</th>
                 <th>Ödünç Alma Tarihi</th>
+                <th>Son İade Tarihi</th>
                 <th>Teslim Edilen Tarih</th>
                 <th>Durum</th>
                 <th>Teslim Durumu</th>
               </tr>
             </ng-template>
 
-            <ng-template #body let-book>
+
+            <ng-template
+              #body
+              let-borrow
+            >
               <tr>
 
                 <td>
-                  {{ book.bookName }}
+                  {{ borrow.userEmail }}
                 </td>
 
                 <td>
-                  {{ book.author }}
+                  {{ borrow.bookName }}
+                </td>
+
+                <td>
+                  {{ borrow.author }}
                 </td>
 
                 <td>
                   {{
-                    book.borrowDate
+                    borrow.borrowDate
                       | date:'dd.MM.yyyy HH:mm'
                   }}
                 </td>
 
                 <td>
-                  @if (book.returnDate) {
+                  {{
+                    borrow.dueDate
+                      | date:'dd.MM.yyyy HH:mm'
+                  }}
+                </td>
+
+                <td>
+                  @if (borrow.returnDate) {
                     {{
-                      book.returnDate
+                      borrow.returnDate
                         | date:'dd.MM.yyyy HH:mm'
                     }}
                   } @else {
@@ -210,17 +233,20 @@
                 </td>
 
                 <td>
-                  {{ getDeliveryStatus(book) }}
+                  {{
+                    getDeliveryStatus(borrow)
+                  }}
                 </td>
 
               </tr>
             </ng-template>
 
+
             <ng-template #emptymessage>
               <tr>
-                <td colspan="6">
-                  Henüz geçmiş bir iade
-                  kaydınız bulunmuyor.
+                <td colspan="8">
+                  Sistemde henüz geçmiş bir
+                  iade kaydı bulunmuyor.
                 </td>
               </tr>
             </ng-template>
@@ -234,4 +260,5 @@
     </p-tabs>
 
   </div>
+
 </div>

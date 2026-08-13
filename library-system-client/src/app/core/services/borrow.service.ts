@@ -1,7 +1,9 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+
 import {
+  AdminBorrow,
   BorrowedBook,
   OperationResult
 } from '../models/borrow.models';
@@ -10,19 +12,26 @@ import {
   providedIn: 'root'
 })
 export class BorrowService {
-  private readonly apiUrl = 'https://localhost:7008/api';
+  private readonly apiUrl =
+    'https://localhost:7008/api';
 
-  constructor(private readonly http: HttpClient) {
+  constructor(
+    private readonly http: HttpClient
+  ) {
   }
 
-  borrow(bookId: number): Observable<OperationResult> {
+  borrow(
+    bookId: number
+  ): Observable<OperationResult> {
     return this.http.post<OperationResult>(
       `${this.apiUrl}/borrow/${bookId}`,
       {}
     );
   }
 
-  returnBook(bookId: number): Observable<OperationResult> {
+  returnBook(
+    bookId: number
+  ): Observable<OperationResult> {
     return this.http.post<OperationResult>(
       `${this.apiUrl}/return/${bookId}`,
       {}
@@ -32,6 +41,13 @@ export class BorrowService {
   getMyBooks(): Observable<BorrowedBook[]> {
     return this.http.get<BorrowedBook[]>(
       `${this.apiUrl}/borrow/my-books`
+    );
+  }
+
+  getAllBorrowsForAdmin():
+    Observable<AdminBorrow[]> {
+    return this.http.get<AdminBorrow[]>(
+      `${this.apiUrl}/admin/borrows`
     );
   }
 }
