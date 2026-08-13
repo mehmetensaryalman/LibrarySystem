@@ -14,4 +14,7 @@ public interface IBorrowService
 
     Task<List<BorrowedBookResponseDto>> GetMyBooksAsync(
         string userId);
+
+    Task<List<AdminBorrowResponseDto>>
+        GetAllBorrowsForAdminAsync();
 }

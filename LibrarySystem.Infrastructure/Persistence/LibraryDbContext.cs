@@ -7,16 +7,19 @@ namespace LibrarySystem.Infrastructure.Persistence;
 
 public class LibraryDbContext : IdentityDbContext<ApplicationUser>
 {
-    public LibraryDbContext(DbContextOptions<LibraryDbContext> options)
+    public LibraryDbContext(
+        DbContextOptions<LibraryDbContext> options)
         : base(options)
     {
     }
 
     public DbSet<Book> Books => Set<Book>();
 
-    public DbSet<BorrowRecord> BorrowRecords => Set<BorrowRecord>();
+    public DbSet<BorrowRecord> BorrowRecords =>
+        Set<BorrowRecord>();
 
-    protected override void OnModelCreating(ModelBuilder builder)
+    protected override void OnModelCreating(
+        ModelBuilder builder)
     {
         base.OnModelCreating(builder);
 
@@ -36,6 +39,10 @@ public class LibraryDbContext : IdentityDbContext<ApplicationUser>
 
             entity.Property(x => x.Stock)
                 .IsRequired();
+
+            entity.Property(x => x.IsArchived)
+                .IsRequired()
+                .HasDefaultValue(false);
         });
 
         builder.Entity<BorrowRecord>(entity =>
@@ -50,6 +57,12 @@ public class LibraryDbContext : IdentityDbContext<ApplicationUser>
 
             entity.Property(x => x.BorrowDate)
                 .IsRequired();
+
+            entity.Property(x => x.DueDate)
+                .IsRequired();
+
+            entity.Property(x => x.ReturnDate)
+                .IsRequired(false);
 
             entity.Property(x => x.IsReturned)
                 .IsRequired();

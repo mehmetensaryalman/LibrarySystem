@@ -2,7 +2,7 @@
 
 namespace LibrarySystem.Application.DTOs.Books;
 
-public class CreateBookRequestDto
+public class UpdateBookRequestDto
 {
     [Required(
         ErrorMessage = "Kitap adı zorunludur."

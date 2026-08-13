@@ -1,6 +1,7 @@
 ﻿using LibrarySystem.Application.Common.Constants;
 using LibrarySystem.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace LibrarySystem.Infrastructure.Seed;
 
@@ -17,7 +18,8 @@ public static class IdentitySeeder
 
         foreach (var role in roles)
         {
-            if (!await roleManager.RoleExistsAsync(role))
+            if (!await roleManager
+                    .RoleExistsAsync(role))
             {
                 var result =
                     await roleManager.CreateAsync(
@@ -50,7 +52,8 @@ public static class IdentitySeeder
         }
 
         var admin =
-            await userManager.FindByEmailAsync(email);
+            await userManager.FindByEmailAsync(
+                email);
 
         if (admin is null)
         {
@@ -72,26 +75,27 @@ public static class IdentitySeeder
                     string.Join(
                         " ",
                         createResult.Errors.Select(
-                            error => error.Description));
+                            error =>
+                                error.Description));
 
                 throw new InvalidOperationException(
                     $"Admin kullanıcısı oluşturulamadı: {errors}");
             }
         }
 
-        if (!await userManager.IsInRoleAsync(
+        if (await userManager.IsInRoleAsync(
                 admin,
                 RoleNames.User))
         {
-            var userRoleResult =
-                await userManager.AddToRoleAsync(
+            var removeUserRoleResult =
+                await userManager.RemoveFromRoleAsync(
                     admin,
                     RoleNames.User);
 
-            if (!userRoleResult.Succeeded)
+            if (!removeUserRoleResult.Succeeded)
             {
                 throw new InvalidOperationException(
-                    "Admin kullanıcısına User rolü atanamadı.");
+                    "Admin kullanıcısından User rolü kaldırılamadı.");
             }
         }
 
@@ -108,6 +112,62 @@ public static class IdentitySeeder
             {
                 throw new InvalidOperationException(
                     "Admin kullanıcısına Admin rolü atanamadı.");
+            }
+        }
+    }
+
+    public static async Task SeedExistingUserRolesAsync(
+        UserManager<ApplicationUser> userManager)
+    {
+        var users =
+            await userManager.Users.ToListAsync();
+
+        foreach (var user in users)
+        {
+            var isAdmin =
+                await userManager.IsInRoleAsync(
+                    user,
+                    RoleNames.Admin);
+
+            var isUser =
+                await userManager.IsInRoleAsync(
+                    user,
+                    RoleNames.User);
+
+            if (isAdmin)
+            {
+                if (isUser)
+                {
+                    var removeUserRoleResult =
+                        await userManager
+                            .RemoveFromRoleAsync(
+                                user,
+                                RoleNames.User);
+
+                    if (!removeUserRoleResult.Succeeded)
+                    {
+                        throw new InvalidOperationException(
+                            $"'{user.Email}' kullanıcısından User rolü kaldırılamadı.");
+                    }
+                }
+
+                continue;
+            }
+
+            if (isUser)
+            {
+                continue;
+            }
+
+            var addUserRoleResult =
+                await userManager.AddToRoleAsync(
+                    user,
+                    RoleNames.User);
+
+            if (!addUserRoleResult.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    $"'{user.Email}' kullanıcısına User rolü atanamadı.");
             }
         }
     }

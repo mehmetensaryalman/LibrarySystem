@@ -11,7 +11,8 @@ public class BorrowService : IBorrowService
 
     private readonly IBorrowRepository _borrowRepository;
 
-    public BorrowService(IBorrowRepository borrowRepository)
+    public BorrowService(
+        IBorrowRepository borrowRepository)
     {
         _borrowRepository = borrowRepository;
     }
@@ -21,7 +22,8 @@ public class BorrowService : IBorrowService
         int bookId)
     {
         var book =
-            await _borrowRepository.GetBookByIdAsync(bookId);
+            await _borrowRepository.GetBookByIdAsync(
+                bookId);
 
         if (book is null)
         {
@@ -51,30 +53,38 @@ public class BorrowService : IBorrowService
             return new OperationResultDto
             {
                 Success = false,
-                Message = "Bu kitabı iade etmeden tekrar ödünç alamazsınız."
+                Message =
+                    "Bu kitabı iade etmeden tekrar ödünç alamazsınız."
             };
         }
 
         var borrowDate = DateTime.UtcNow;
 
-        var borrowRecord = new BorrowRecord
-        {
-            UserId = userId,
-            BookId = bookId,
-            BorrowDate = borrowDate,
-            DueDate = borrowDate.AddDays(BorrowDurationDays),
-            IsReturned = false
-        };
+        var borrowRecord =
+            new BorrowRecord
+            {
+                UserId = userId,
+                BookId = bookId,
+                BorrowDate = borrowDate,
+                DueDate =
+                    borrowDate.AddDays(
+                        BorrowDurationDays),
+                IsReturned = false
+            };
 
         book.Stock--;
 
-        await _borrowRepository.AddBorrowAsync(borrowRecord);
-        await _borrowRepository.SaveChangesAsync();
+        await _borrowRepository
+            .AddBorrowAsync(borrowRecord);
+
+        await _borrowRepository
+            .SaveChangesAsync();
 
         return new OperationResultDto
         {
             Success = true,
-            Message = "Kitap başarıyla ödünç alındı."
+            Message =
+                "Kitap başarıyla ödünç alındı."
         };
     }
 
@@ -92,12 +102,14 @@ public class BorrowService : IBorrowService
             return new OperationResultDto
             {
                 Success = false,
-                Message = "İade edilecek aktif ödünç kaydı bulunamadı."
+                Message =
+                    "İade edilecek aktif ödünç kaydı bulunamadı."
             };
         }
 
         var book =
-            await _borrowRepository.GetBookByIdAsync(bookId);
+            await _borrowRepository.GetBookByIdAsync(
+                bookId);
 
         if (book is null)
         {
@@ -110,58 +122,137 @@ public class BorrowService : IBorrowService
 
         activeBorrow.IsReturned = true;
         activeBorrow.ReturnDate = DateTime.UtcNow;
+
         book.Stock++;
 
-        await _borrowRepository.SaveChangesAsync();
+        await _borrowRepository
+            .SaveChangesAsync();
 
         return new OperationResultDto
         {
             Success = true,
-            Message = "Kitap başarıyla iade edildi."
+            Message =
+                "Kitap başarıyla iade edildi."
         };
     }
 
-    public async Task<List<BorrowedBookResponseDto>> GetMyBooksAsync(
-    string userId)
+    public async Task<List<BorrowedBookResponseDto>>
+        GetMyBooksAsync(
+            string userId)
     {
         var borrowRecords =
-            await _borrowRepository.GetUserBorrowsAsync(userId);
+            await _borrowRepository
+                .GetUserBorrowsAsync(userId);
+
+        return borrowRecords
+            .Select(record =>
+                new BorrowedBookResponseDto
+                {
+                    BorrowRecordId =
+                        record.Id,
+
+                    BookId =
+                        record.BookId,
+
+                    BookName =
+                        record.Book.Name,
+
+                    Author =
+                        record.Book.Author,
+
+                    BorrowDate =
+                        AsUtc(record.BorrowDate),
+
+                    DueDate =
+                        AsUtc(record.DueDate),
+
+                    ReturnDate =
+                        AsUtc(record.ReturnDate),
+
+                    IsReturned =
+                        record.IsReturned
+                })
+            .ToList();
+    }
+
+    public async Task<List<AdminBorrowResponseDto>>
+        GetAllBorrowsForAdminAsync()
+    {
+        var borrowRecords =
+            await _borrowRepository
+                .GetAllBorrowsAsync();
+
+        var userEmails =
+            await _borrowRepository
+                .GetUserEmailsAsync(
+                    borrowRecords
+                        .Select(record =>
+                            record.UserId));
 
         return borrowRecords
             .Select(record =>
             {
-                var borrowDateUtc =
-                    DateTime.SpecifyKind(
-                        record.BorrowDate,
-                        DateTimeKind.Utc);
+                var userEmail =
+                    userEmails.TryGetValue(
+                        record.UserId,
+                        out var email)
+                        ? email
+                        : "Bilinmiyor";
 
-                var dueDateUtc =
-                    DateTime.SpecifyKind(
-                        record.DueDate,
-                        DateTimeKind.Utc);
-
-                DateTime? returnDateUtc = null;
-
-                if (record.ReturnDate.HasValue)
+                return new AdminBorrowResponseDto
                 {
-                    returnDateUtc =
-                        DateTime.SpecifyKind(
-                            record.ReturnDate.Value,
-                            DateTimeKind.Utc);
-                }
+                    BorrowRecordId =
+                        record.Id,
 
-                return new BorrowedBookResponseDto
-                {
-                    BorrowRecordId = record.Id,
-                    BookId = record.BookId,
-                    BookName = record.Book.Name,
-                    Author = record.Book.Author,
-                    BorrowDate = borrowDateUtc,
-                    DueDate = dueDateUtc,
-                    ReturnDate = returnDateUtc,
-                    IsReturned = record.IsReturned
+                    UserId =
+                        record.UserId,
+
+                    UserEmail =
+                        userEmail,
+
+                    BookId =
+                        record.BookId,
+
+                    BookName =
+                        record.Book.Name,
+
+                    Author =
+                        record.Book.Author,
+
+                    BorrowDate =
+                        AsUtc(record.BorrowDate),
+
+                    DueDate =
+                        AsUtc(record.DueDate),
+
+                    ReturnDate =
+                        AsUtc(record.ReturnDate),
+
+                    IsReturned =
+                        record.IsReturned
                 };
             })
             .ToList();
+    }
+
+    private static DateTime AsUtc(
+        DateTime dateTime)
+    {
+        return DateTime.SpecifyKind(
+            dateTime,
+            DateTimeKind.Utc);
+    }
+
+    private static DateTime? AsUtc(
+        DateTime? dateTime)
+    {
+        if (!dateTime.HasValue)
+        {
+            return null;
+        }
+
+        return DateTime.SpecifyKind(
+            dateTime.Value,
+            DateTimeKind.Utc);
     }
 }

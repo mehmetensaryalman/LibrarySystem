@@ -9,15 +9,19 @@ public class BorrowRepository : IBorrowRepository
 {
     private readonly LibraryDbContext _dbContext;
 
-    public BorrowRepository(LibraryDbContext dbContext)
+    public BorrowRepository(
+        LibraryDbContext dbContext)
     {
         _dbContext = dbContext;
     }
 
-    public async Task<Book?> GetBookByIdAsync(int bookId)
+    public async Task<Book?> GetBookByIdAsync(
+        int bookId)
     {
         return await _dbContext.Books
-            .FirstOrDefaultAsync(book => book.Id == bookId);
+            .FirstOrDefaultAsync(book =>
+                book.Id == bookId &&
+                !book.IsArchived);
     }
 
     public async Task<BorrowRecord?> GetActiveBorrowAsync(
@@ -37,15 +41,53 @@ public class BorrowRepository : IBorrowRepository
         return await _dbContext.BorrowRecords
             .AsNoTracking()
             .Include(record => record.Book)
-            .Where(record => record.UserId == userId)
-            .OrderByDescending(record => record.BorrowDate)
+            .Where(record =>
+                record.UserId == userId)
+            .OrderByDescending(record =>
+                record.BorrowDate)
             .ToListAsync();
+    }
+
+    public async Task<List<BorrowRecord>> GetAllBorrowsAsync()
+    {
+        return await _dbContext.BorrowRecords
+            .AsNoTracking()
+            .Include(record => record.Book)
+            .OrderByDescending(record =>
+                record.BorrowDate)
+            .ToListAsync();
+    }
+
+    public async Task<Dictionary<string, string>>
+        GetUserEmailsAsync(
+            IEnumerable<string> userIds)
+    {
+        var ids = userIds
+            .Distinct()
+            .ToList();
+
+        if (ids.Count == 0)
+        {
+            return new Dictionary<string, string>();
+        }
+
+        return await _dbContext.Users
+            .AsNoTracking()
+            .Where(user =>
+                ids.Contains(user.Id))
+            .ToDictionaryAsync(
+                user => user.Id,
+                user =>
+                    user.Email ??
+                    user.UserName ??
+                    "Bilinmiyor");
     }
 
     public async Task AddBorrowAsync(
         BorrowRecord borrowRecord)
     {
-        await _dbContext.BorrowRecords.AddAsync(borrowRecord);
+        await _dbContext.BorrowRecords
+            .AddAsync(borrowRecord);
     }
 
     public async Task SaveChangesAsync()

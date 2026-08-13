@@ -13,7 +13,13 @@ public interface IBorrowRepository
     Task<List<BorrowRecord>> GetUserBorrowsAsync(
         string userId);
 
-    Task AddBorrowAsync(BorrowRecord borrowRecord);
+    Task<List<BorrowRecord>> GetAllBorrowsAsync();
+
+    Task<Dictionary<string, string>> GetUserEmailsAsync(
+        IEnumerable<string> userIds);
+
+    Task AddBorrowAsync(
+        BorrowRecord borrowRecord);
 
     Task SaveChangesAsync();
 }

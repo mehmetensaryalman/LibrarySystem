@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using LibrarySystem.Application.Common.Constants;
 using LibrarySystem.Application.Interfaces.Borrow;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,13 +13,16 @@ public class BorrowController : ControllerBase
 {
     private readonly IBorrowService _borrowService;
 
-    public BorrowController(IBorrowService borrowService)
+    public BorrowController(
+        IBorrowService borrowService)
     {
         _borrowService = borrowService;
     }
 
     [HttpPost("borrow/{bookId:int}")]
-    public async Task<IActionResult> Borrow(int bookId)
+    [Authorize(Policy = "BorrowerOnly")]
+    public async Task<IActionResult> Borrow(
+        int bookId)
     {
         var userId = GetUserId();
 
@@ -27,9 +31,10 @@ public class BorrowController : ControllerBase
             return Unauthorized();
         }
 
-        var result = await _borrowService.BorrowAsync(
-            userId,
-            bookId);
+        var result =
+            await _borrowService.BorrowAsync(
+                userId,
+                bookId);
 
         if (!result.Success)
         {
@@ -40,7 +45,9 @@ public class BorrowController : ControllerBase
     }
 
     [HttpPost("return/{bookId:int}")]
-    public async Task<IActionResult> Return(int bookId)
+    [Authorize(Policy = "BorrowerOnly")]
+    public async Task<IActionResult> Return(
+        int bookId)
     {
         var userId = GetUserId();
 
@@ -49,9 +56,10 @@ public class BorrowController : ControllerBase
             return Unauthorized();
         }
 
-        var result = await _borrowService.ReturnAsync(
-            userId,
-            bookId);
+        var result =
+            await _borrowService.ReturnAsync(
+                userId,
+                bookId);
 
         if (!result.Success)
         {
@@ -62,7 +70,9 @@ public class BorrowController : ControllerBase
     }
 
     [HttpGet("borrow/my-books")]
-    public async Task<IActionResult> GetMyBooks()
+    [Authorize(Policy = "BorrowerOnly")]
+    public async Task<IActionResult>
+        GetMyBooks()
     {
         var userId = GetUserId();
 
@@ -72,9 +82,22 @@ public class BorrowController : ControllerBase
         }
 
         var books =
-            await _borrowService.GetMyBooksAsync(userId);
+            await _borrowService
+                .GetMyBooksAsync(userId);
 
         return Ok(books);
+    }
+
+    [HttpGet("admin/borrows")]
+    [Authorize(Roles = RoleNames.Admin)]
+    public async Task<IActionResult>
+        GetAllBorrowsForAdmin()
+    {
+        var borrows =
+            await _borrowService
+                .GetAllBorrowsForAdminAsync();
+
+        return Ok(borrows);
     }
 
     private string? GetUserId()

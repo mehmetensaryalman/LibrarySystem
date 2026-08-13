@@ -2,6 +2,7 @@
 using LibrarySystem.Application.Interfaces.Books;
 using LibrarySystem.Application.Interfaces.Repositories;
 using LibrarySystem.Domain.Entities;
+using LibrarySystem.Application.Common.Models;
 
 namespace LibrarySystem.Application.Services.Books;
 
@@ -50,17 +51,134 @@ public class BookService : IBookService
         };
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<BookResponseDto?> UpdateAsync(
+    int id,
+    UpdateBookRequestDto request)
+{
+    var book =
+        await _bookRepository.GetByIdAsync(id);
+
+    if (book is null)
     {
-        var book = await _bookRepository.GetByIdAsync(id);
+        return null;
+    }
+
+    book.Name = request.Name.Trim();
+    book.Author = request.Author.Trim();
+    book.Stock = request.Stock;
+
+    var updatedBook =
+        await _bookRepository.UpdateAsync(book);
+
+    return new BookResponseDto
+    {
+        Id = updatedBook.Id,
+        Name = updatedBook.Name,
+        Author = updatedBook.Author,
+        Stock = updatedBook.Stock
+    };
+}
+
+    public async Task<List<ArchivedBookResponseDto>>
+    GetArchivedAsync()
+    {
+        var books =
+            await _bookRepository.GetArchivedAsync();
+
+        return books
+            .Select(book =>
+                new ArchivedBookResponseDto
+                {
+                    Id = book.Id,
+                    Name = book.Name,
+                    Author = book.Author,
+                    Stock = book.Stock,
+                    IsArchived = book.IsArchived
+                })
+            .ToList();
+    }
+
+    public async Task<ArchivedBookResponseDto?>
+        RestoreAsync(
+            int id)
+    {
+        var book =
+            await _bookRepository
+                .GetArchivedByIdAsync(id);
 
         if (book is null)
         {
-            return false;
+            return null;
+        }
+
+        await _bookRepository.RestoreAsync(book);
+
+        return new ArchivedBookResponseDto
+        {
+            Id = book.Id,
+            Name = book.Name,
+            Author = book.Author,
+            Stock = book.Stock,
+            IsArchived = book.IsArchived
+        };
+    }
+
+    public async Task<DeleteBookResult> DeleteAsync(
+    int id)
+    {
+        var book =
+            await _bookRepository.GetByIdAsync(id);
+
+        if (book is null)
+        {
+            return new DeleteBookResult
+            {
+                Status = DeleteBookStatus.NotFound,
+                Message = "Kitap bulunamadı."
+            };
+        }
+
+        var hasActiveBorrow =
+            await _bookRepository
+                .HasActiveBorrowAsync(id);
+
+        if (hasActiveBorrow)
+        {
+            return new DeleteBookResult
+            {
+                Status =
+                    DeleteBookStatus.ActiveBorrowExists,
+
+                Message =
+                    "Bu kitap şu anda ödünç alındığı için katalogdan kaldırılamaz."
+            };
+        }
+
+        var hasBorrowHistory =
+            await _bookRepository
+                .HasBorrowHistoryAsync(id);
+
+        if (hasBorrowHistory)
+        {
+            await _bookRepository.ArchiveAsync(book);
+
+            return new DeleteBookResult
+            {
+                Status = DeleteBookStatus.Archived,
+
+                Message =
+                    "Kitap ödünç geçmişi bulunduğu için silinmedi, arşivlendi."
+            };
         }
 
         await _bookRepository.DeleteAsync(book);
 
-        return true;
+        return new DeleteBookResult
+        {
+            Status = DeleteBookStatus.Deleted,
+
+            Message =
+                "Kitap başarıyla silindi."
+        };
     }
 }

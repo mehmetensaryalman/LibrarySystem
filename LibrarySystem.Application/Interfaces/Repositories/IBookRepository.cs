@@ -6,9 +6,23 @@ public interface IBookRepository
 {
     Task<List<Book>> GetAllAsync();
 
+    Task<List<Book>> GetArchivedAsync();
+
     Task<Book?> GetByIdAsync(int id);
 
-    Task AddAsync(Book book);
+    Task<Book?> GetArchivedByIdAsync(int id);
+
+    Task<Book> AddAsync(Book book);
+
+    Task<Book> UpdateAsync(Book book);
 
     Task DeleteAsync(Book book);
+
+    Task<bool> HasActiveBorrowAsync(int bookId);
+
+    Task<bool> HasBorrowHistoryAsync(int bookId);
+
+    Task ArchiveAsync(Book book);
+
+    Task RestoreAsync(Book book);
 }
