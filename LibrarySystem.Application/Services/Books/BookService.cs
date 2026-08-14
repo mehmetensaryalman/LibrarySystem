@@ -1,4 +1,5 @@
-﻿using LibrarySystem.Application.Common.Models;
+﻿using LibrarySystem.Application.Common.Exceptions;
+using LibrarySystem.Application.Common.Models;
 using LibrarySystem.Application.DTOs.Books;
 using LibrarySystem.Application.Interfaces.Books;
 using LibrarySystem.Application.Interfaces.Realtime;
@@ -19,8 +20,11 @@ public class BookService : IBookService
         IBookRepository bookRepository,
         IRealtimeNotifier realtimeNotifier)
     {
-        _bookRepository = bookRepository;
-        _realtimeNotifier = realtimeNotifier;
+        _bookRepository =
+            bookRepository;
+
+        _realtimeNotifier =
+            realtimeNotifier;
     }
 
     public async Task<List<BookResponseDto>>
@@ -42,14 +46,80 @@ public class BookService : IBookService
             .ToList();
     }
 
+    public async Task<
+        PagedResult<BookResponseDto>>
+        GetPagedAsync(
+            BookFilterRequestDto request)
+    {
+        var search =
+            string.IsNullOrWhiteSpace(
+                request.Search)
+                ? null
+                : request.Search.Trim();
+
+        var result =
+            await _bookRepository
+                .GetPagedAsync(
+                    search,
+                    request.InStock,
+                    request.SortBy,
+                    request.PageNumber,
+                    request.PageSize);
+
+        return new PagedResult<
+            BookResponseDto>
+        {
+            Items =
+                result.Items
+                    .Select(book =>
+                        new BookResponseDto
+                        {
+                            Id = book.Id,
+                            Name = book.Name,
+                            Author =
+                                book.Author,
+                            Stock =
+                                book.Stock
+                        })
+                    .ToList(),
+
+            PageNumber =
+                result.PageNumber,
+
+            PageSize =
+                result.PageSize,
+
+            TotalCount =
+                result.TotalCount
+        };
+    }
+
     public async Task<BookResponseDto>
         CreateAsync(
             CreateBookRequestDto request)
     {
+        var name =
+            request.Name.Trim();
+
+        var author =
+            request.Author.Trim();
+
+        var bookAlreadyExists =
+            await _bookRepository
+                .ExistsByNameAndAuthorAsync(
+                    name,
+                    author);
+
+        if (bookAlreadyExists)
+        {
+            throw new DuplicateBookException(
+                "Bu kitap ve yazar bilgileriyle kayıtlı bir kitap zaten mevcut.");
+        }
+
         var book = new Book
         {
-            Name = request.Name.Trim(),
-            Author = request.Author.Trim(),
+            Name = name,
+            Author = author,
             Stock = request.Stock
         };
 
@@ -82,14 +152,28 @@ public class BookService : IBookService
             return null;
         }
 
-        book.Name =
+        var name =
             request.Name.Trim();
 
-        book.Author =
+        var author =
             request.Author.Trim();
 
-        book.Stock =
-            request.Stock;
+        var duplicateBookExists =
+            await _bookRepository
+                .ExistsByNameAndAuthorAsync(
+                    name,
+                    author,
+                    id);
+
+        if (duplicateBookExists)
+        {
+            throw new DuplicateBookException(
+                "Bu kitap ve yazar bilgileriyle kayıtlı başka bir kitap zaten mevcut.");
+        }
+
+        book.Name = name;
+        book.Author = author;
+        book.Stock = request.Stock;
 
         var updatedBook =
             await _bookRepository
@@ -102,8 +186,10 @@ public class BookService : IBookService
         {
             Id = updatedBook.Id,
             Name = updatedBook.Name,
-            Author = updatedBook.Author,
-            Stock = updatedBook.Stock
+            Author =
+                updatedBook.Author,
+            Stock =
+                updatedBook.Stock
         };
     }
 
@@ -121,8 +207,10 @@ public class BookService : IBookService
                 {
                     Id = book.Id,
                     Name = book.Name,
-                    Author = book.Author,
-                    Stock = book.Stock,
+                    Author =
+                        book.Author,
+                    Stock =
+                        book.Stock,
                     IsArchived =
                         book.IsArchived
                 })
@@ -136,7 +224,8 @@ public class BookService : IBookService
     {
         var book =
             await _bookRepository
-                .GetArchivedByIdAsync(id);
+                .GetArchivedByIdAsync(
+                    id);
 
         if (book is null)
         {
