@@ -1,5 +1,6 @@
 import {
   Component,
+  OnDestroy,
   OnInit,
   signal
 } from '@angular/core';
@@ -7,6 +8,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
   finalize,
+  Subscription,
   timeout
 } from 'rxjs';
 
@@ -22,6 +24,7 @@ import { Book } from '../../../core/models/book.models';
 import { AuthService } from '../../../core/services/auth.service';
 import { BookService } from '../../../core/services/book.service';
 import { BorrowService } from '../../../core/services/borrow.service';
+import { SignalRService } from '../../../core/services/signalr.service';
 
 @Component({
   selector: 'app-book-list',
@@ -40,7 +43,9 @@ import { BorrowService } from '../../../core/services/borrow.service';
   templateUrl: './book-list.component.html',
   styleUrl: './book-list.component.scss'
 })
-export class BookListComponent implements OnInit {
+export class BookListComponent
+  implements OnInit, OnDestroy {
+
   books = signal<Book[]>([]);
   loading = signal(false);
 
@@ -72,6 +77,12 @@ export class BookListComponent implements OnInit {
   editBookAuthor = '';
   editBookStock: number | null = 0;
 
+  private booksChangedSubscription:
+    Subscription | null = null;
+
+  private successMessageTimeout:
+    ReturnType<typeof setTimeout> | null = null;
+
   private readonly authorNamePattern =
     /^(?=.*\p{L})[\p{L}\p{M}.'’\- ]+$/u;
 
@@ -79,6 +90,7 @@ export class BookListComponent implements OnInit {
     private readonly bookService: BookService,
     private readonly borrowService: BorrowService,
     private readonly authService: AuthService,
+    private readonly signalRService: SignalRService,
     private readonly router: Router,
     private readonly confirmationService:
       ConfirmationService
@@ -90,7 +102,28 @@ export class BookListComponent implements OnInit {
       this.authService.isAdmin()
     );
 
+    this.booksChangedSubscription =
+      this.signalRService
+        .booksChanged$
+        .subscribe(() => {
+          this.loadBooks();
+        });
+
+    void this.signalRService
+      .startConnection();
+
     this.loadBooks();
+  }
+
+  ngOnDestroy(): void {
+    this.booksChangedSubscription
+      ?.unsubscribe();
+
+    if (this.successMessageTimeout !== null) {
+      clearTimeout(
+        this.successMessageTimeout
+      );
+    }
   }
 
   loadBooks(): void {
@@ -139,7 +172,6 @@ export class BookListComponent implements OnInit {
 
   borrowBook(book: Book): void {
     this.errorMessage.set('');
-    this.successMessage.set('');
 
     if (book.stock <= 0) {
       this.errorMessage.set(
@@ -166,11 +198,9 @@ export class BookListComponent implements OnInit {
             return;
           }
 
-          this.successMessage.set(
+          this.showSuccessMessage(
             result.message
           );
-
-          this.loadBooks();
         },
 
         error: error => {
@@ -184,7 +214,6 @@ export class BookListComponent implements OnInit {
 
   openEditDialog(book: Book): void {
     this.errorMessage.set('');
-    this.successMessage.set('');
     this.editDialogErrorMessage = '';
 
     this.editingBookId = book.id;
@@ -281,13 +310,11 @@ export class BookListComponent implements OnInit {
           this.editDialogVisible = false;
           this.editDialogErrorMessage = '';
 
-          this.successMessage.set(
+          this.showSuccessMessage(
             'Kitap başarıyla güncellendi.'
           );
 
           this.editingBookId = null;
-
-          this.loadBooks();
         },
 
         error: error => {
@@ -313,7 +340,6 @@ export class BookListComponent implements OnInit {
 
   openCreateDialog(): void {
     this.errorMessage.set('');
-    this.successMessage.set('');
     this.createDialogErrorMessage = '';
 
     this.newBookName = '';
@@ -401,11 +427,9 @@ export class BookListComponent implements OnInit {
           this.createDialogVisible = false;
           this.createDialogErrorMessage = '';
 
-          this.successMessage.set(
+          this.showSuccessMessage(
             `"${book.name}" başarıyla eklendi.`
           );
-
-          this.loadBooks();
         },
 
         error: error => {
@@ -448,7 +472,6 @@ export class BookListComponent implements OnInit {
 
   private deleteBook(book: Book): void {
     this.errorMessage.set('');
-    this.successMessage.set('');
 
     this.deletingBookId.set(book.id);
 
@@ -461,11 +484,9 @@ export class BookListComponent implements OnInit {
       )
       .subscribe({
         next: result => {
-          this.successMessage.set(
+          this.showSuccessMessage(
             result.message
           );
-
-          this.loadBooks();
         },
 
         error: error => {
@@ -490,6 +511,28 @@ export class BookListComponent implements OnInit {
           );
         }
       });
+  }
+
+  private showSuccessMessage(
+    message: string
+  ): void {
+    if (this.successMessageTimeout !== null) {
+      clearTimeout(
+        this.successMessageTimeout
+      );
+    }
+
+    this.successMessage.set(
+      message
+    );
+
+    this.successMessageTimeout =
+      setTimeout(() => {
+        this.successMessage.set('');
+
+        this.successMessageTimeout =
+          null;
+      }, 3600);
   }
 
   goToAdminPanel(): void {

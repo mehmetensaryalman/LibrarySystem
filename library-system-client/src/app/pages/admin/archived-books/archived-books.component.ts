@@ -1,10 +1,16 @@
 import {
   Component,
+  OnDestroy,
   OnInit,
   signal
 } from '@angular/core';
+
 import { Router } from '@angular/router';
-import { finalize } from 'rxjs';
+
+import {
+  finalize,
+  Subscription
+} from 'rxjs';
 
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
@@ -21,19 +27,26 @@ import {
   BookService
 } from '../../../core/services/book.service';
 
+import {
+  SignalRService
+} from '../../../core/services/signalr.service';
+
 @Component({
   selector: 'app-archived-books',
+
   imports: [
     ButtonModule,
     TableModule
   ],
+
   templateUrl:
     './archived-books.component.html',
+
   styleUrl:
     './archived-books.component.scss'
 })
 export class ArchivedBooksComponent
-  implements OnInit {
+  implements OnInit, OnDestroy {
 
   archivedBooks =
     signal<ArchivedBook[]>([]);
@@ -46,6 +59,12 @@ export class ArchivedBooksComponent
   errorMessage = signal('');
   successMessage = signal('');
 
+  private booksChangedSubscription:
+    Subscription | null = null;
+
+  private successMessageTimeout:
+    ReturnType<typeof setTimeout> | null = null;
+
   constructor(
     private readonly bookService:
       BookService,
@@ -53,13 +72,37 @@ export class ArchivedBooksComponent
     private readonly authService:
       AuthService,
 
+    private readonly signalRService:
+      SignalRService,
+
     private readonly router:
       Router
   ) {
   }
 
   ngOnInit(): void {
+    this.booksChangedSubscription =
+      this.signalRService
+        .booksChanged$
+        .subscribe(() => {
+          this.loadArchivedBooks();
+        });
+
+    void this.signalRService
+      .startConnection();
+
     this.loadArchivedBooks();
+  }
+
+  ngOnDestroy(): void {
+    this.booksChangedSubscription
+      ?.unsubscribe();
+
+    if (this.successMessageTimeout !== null) {
+      clearTimeout(
+        this.successMessageTimeout
+      );
+    }
   }
 
   loadArchivedBooks(): void {
@@ -75,7 +118,9 @@ export class ArchivedBooksComponent
       )
       .subscribe({
         next: books => {
-          this.archivedBooks.set(books);
+          this.archivedBooks.set(
+            books
+          );
         },
 
         error: error => {
@@ -98,7 +143,6 @@ export class ArchivedBooksComponent
     book: ArchivedBook
   ): void {
     this.errorMessage.set('');
-    this.successMessage.set('');
 
     this.restoringBookId.set(
       book.id
@@ -108,16 +152,16 @@ export class ArchivedBooksComponent
       .restore(book.id)
       .pipe(
         finalize(() => {
-          this.restoringBookId.set(null);
+          this.restoringBookId.set(
+            null
+          );
         })
       )
       .subscribe({
         next: result => {
-          this.successMessage.set(
+          this.showSuccessMessage(
             result.message
           );
-
-          this.loadArchivedBooks();
         },
 
         error: error => {
@@ -142,6 +186,28 @@ export class ArchivedBooksComponent
           );
         }
       });
+  }
+
+  private showSuccessMessage(
+    message: string
+  ): void {
+    if (this.successMessageTimeout !== null) {
+      clearTimeout(
+        this.successMessageTimeout
+      );
+    }
+
+    this.successMessage.set(
+      message
+    );
+
+    this.successMessageTimeout =
+      setTimeout(() => {
+        this.successMessage.set('');
+
+        this.successMessageTimeout =
+          null;
+      }, 3600);
   }
 
   goToAdminPanel(): void {

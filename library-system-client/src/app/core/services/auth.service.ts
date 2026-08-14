@@ -1,6 +1,12 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+
+import {
+  Observable,
+  Subject,
+  tap
+} from 'rxjs';
+
 import {
   AuthResult,
   LoginRequest,
@@ -14,9 +20,18 @@ export class AuthService {
   private readonly apiUrl =
     'https://localhost:7008/api/auth';
 
-  private readonly tokenKey = 'library_token';
+  private readonly tokenKey =
+    'library_token';
 
-  constructor(private readonly http: HttpClient) {
+  private readonly logoutSubject =
+    new Subject<void>();
+
+  readonly logout$ =
+    this.logoutSubject.asObservable();
+
+  constructor(
+    private readonly http: HttpClient
+  ) {
   }
 
   register(
@@ -38,7 +53,10 @@ export class AuthService {
       )
       .pipe(
         tap(result => {
-          if (result.success && result.token) {
+          if (
+            result.success &&
+            result.token
+          ) {
             localStorage.setItem(
               this.tokenKey,
               result.token
@@ -49,18 +67,23 @@ export class AuthService {
   }
 
   getToken(): string | null {
-    return localStorage.getItem(this.tokenKey);
+    return localStorage.getItem(
+      this.tokenKey
+    );
   }
 
   isLoggedIn(): boolean {
-    const token = this.getToken();
+    const token =
+      this.getToken();
 
     if (!token) {
       return false;
     }
 
     const expirationTime =
-      this.getTokenExpirationTime(token);
+      this.getTokenExpirationTime(
+        token
+      );
 
     if (
       expirationTime === null ||
@@ -74,63 +97,78 @@ export class AuthService {
   }
 
   logout(): void {
-    localStorage.removeItem(this.tokenKey);
+    localStorage.removeItem(
+      this.tokenKey
+    );
+
+    this.logoutSubject.next();
   }
 
   getRoles(): string[] {
-  const token = this.getToken();
+    const token =
+      this.getToken();
 
-  if (!token) {
-    return [];
-  }
-
-  try {
-    const parts = token.split('.');
-
-    if (parts.length !== 3) {
+    if (!token) {
       return [];
     }
 
-    let payload = parts[1]
-      .replace(/-/g, '+')
-      .replace(/_/g, '/');
+    try {
+      const parts =
+        token.split('.');
 
-    const padding = payload.length % 4;
+      if (parts.length !== 3) {
+        return [];
+      }
 
-    if (padding) {
-      payload += '='.repeat(4 - padding);
-    }
+      let payload = parts[1]
+        .replace(/-/g, '+')
+        .replace(/_/g, '/');
 
-    const decodedPayload = JSON.parse(
-      atob(payload)
-    );
+      const padding =
+        payload.length % 4;
 
-    const roleClaim =
-      decodedPayload[
-        'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'
-      ];
+      if (padding) {
+        payload += '='.repeat(
+          4 - padding
+        );
+      }
 
-    if (!roleClaim) {
+      const decodedPayload =
+        JSON.parse(
+          atob(payload)
+        );
+
+      const roleClaim =
+        decodedPayload[
+          'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'
+        ];
+
+      if (!roleClaim) {
+        return [];
+      }
+
+      return Array.isArray(
+        roleClaim
+      )
+        ? roleClaim
+        : [roleClaim];
+    } catch {
       return [];
     }
-
-    return Array.isArray(roleClaim)
-      ? roleClaim
-      : [roleClaim];
-  } catch {
-    return [];
   }
-}
 
   isAdmin(): boolean {
-    return this.getRoles().includes('Admin');
+    return this
+      .getRoles()
+      .includes('Admin');
   }
 
   private getTokenExpirationTime(
     token: string
   ): number | null {
     try {
-      const parts = token.split('.');
+      const parts =
+        token.split('.');
 
       if (parts.length !== 3) {
         return null;
@@ -144,19 +182,27 @@ export class AuthService {
         payload.length % 4;
 
       if (padding) {
-        payload += '='.repeat(4 - padding);
+        payload += '='.repeat(
+          4 - padding
+        );
       }
 
       const decodedPayload =
-        JSON.parse(atob(payload));
+        JSON.parse(
+          atob(payload)
+        );
 
       if (
-        typeof decodedPayload.exp !== 'number'
+        typeof decodedPayload.exp !==
+        'number'
       ) {
         return null;
       }
 
-      return decodedPayload.exp * 1000;
+      return (
+        decodedPayload.exp *
+        1000
+      );
     } catch {
       return null;
     }

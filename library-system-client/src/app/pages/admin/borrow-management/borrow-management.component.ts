@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 
 import {
   Component,
+  OnDestroy,
   OnInit,
   computed,
   signal
@@ -9,7 +10,10 @@ import {
 
 import { Router } from '@angular/router';
 
-import { finalize } from 'rxjs';
+import {
+  finalize,
+  Subscription
+} from 'rxjs';
 
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
@@ -26,6 +30,10 @@ import {
 import {
   BorrowService
 } from '../../../core/services/borrow.service';
+
+import {
+  SignalRService
+} from '../../../core/services/signalr.service';
 
 @Component({
   selector: 'app-borrow-management',
@@ -44,7 +52,7 @@ import {
     './borrow-management.component.scss'
 })
 export class BorrowManagementComponent
-  implements OnInit {
+  implements OnInit, OnDestroy {
 
   borrows =
     signal<AdminBorrow[]>([]);
@@ -65,6 +73,9 @@ export class BorrowManagementComponent
 
   errorMessage = signal('');
 
+  private borrowsChangedSubscription:
+    Subscription | null = null;
+
   constructor(
     private readonly borrowService:
       BorrowService,
@@ -72,13 +83,31 @@ export class BorrowManagementComponent
     private readonly authService:
       AuthService,
 
+    private readonly signalRService:
+      SignalRService,
+
     private readonly router:
       Router
   ) {
   }
 
   ngOnInit(): void {
+    this.borrowsChangedSubscription =
+      this.signalRService
+        .borrowsChanged$
+        .subscribe(() => {
+          this.loadBorrows();
+        });
+
+    void this.signalRService
+      .startConnection();
+
     this.loadBorrows();
+  }
+
+  ngOnDestroy(): void {
+    this.borrowsChangedSubscription
+      ?.unsubscribe();
   }
 
   loadBorrows(): void {

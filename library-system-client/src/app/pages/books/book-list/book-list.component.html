@@ -154,7 +154,10 @@
     maxWidth: '95vw'
   }"
 >
-  <div class="book-form">
+  <form
+    class="book-form"
+    (ngSubmit)="createBook()"
+  >
 
     @if (createDialogErrorMessage) {
       <div class="dialog-error-message">
@@ -169,6 +172,7 @@
 
       <input
         id="bookName"
+        name="bookName"
         type="text"
         pInputText
         [(ngModel)]="newBookName"
@@ -183,6 +187,7 @@
 
       <input
         id="bookAuthor"
+        name="bookAuthor"
         type="text"
         pInputText
         [(ngModel)]="newBookAuthor"
@@ -197,6 +202,7 @@
 
       <p-inputnumber
         inputId="bookStock"
+        name="bookStock"
         [(ngModel)]="newBookStock"
         [min]="0"
         [step]="1"
@@ -218,14 +224,13 @@
 
       <p-button
         label="Kitabı Ekle"
-        type="button"
+        type="submit"
         [loading]="creatingBook"
-        (onClick)="createBook()"
       ></p-button>
 
     </div>
 
-  </div>
+  </form>
 </p-dialog>
 
 
@@ -240,7 +245,10 @@
     maxWidth: '95vw'
   }"
 >
-  <div class="book-form">
+  <form
+    class="book-form"
+    (ngSubmit)="updateBook()"
+  >
 
     @if (editDialogErrorMessage) {
       <div class="dialog-error-message">
@@ -255,6 +263,7 @@
 
       <input
         id="editBookName"
+        name="editBookName"
         type="text"
         pInputText
         [(ngModel)]="editBookName"
@@ -269,6 +278,7 @@
 
       <input
         id="editBookAuthor"
+        name="editBookAuthor"
         type="text"
         pInputText
         [(ngModel)]="editBookAuthor"
@@ -283,6 +293,7 @@
 
       <p-inputnumber
         inputId="editBookStock"
+        name="editBookStock"
         [(ngModel)]="editBookStock"
         [min]="0"
         [step]="1"
@@ -304,14 +315,13 @@
 
       <p-button
         label="Kaydet"
-        type="button"
+        type="submit"
         [loading]="updatingBook"
-        (onClick)="updateBook()"
       ></p-button>
 
     </div>
 
-  </div>
+  </form>
 </p-dialog>
 
 
