@@ -43,6 +43,66 @@
   }
 
   <div class="table-card">
+
+    <div class="book-list-controls">
+
+      <div class="filter-field search-field">
+        <label for="bookSearch">
+          Kitap veya Yazar Ara
+        </label>
+
+        <input
+          id="bookSearch"
+          type="text"
+          pInputText
+          [(ngModel)]="searchText"
+          (ngModelChange)="onSearchChange($event)"
+          (keyup.enter)="applySearchImmediately()"
+          placeholder="Kitap adı veya yazar..."
+          autocomplete="off"
+        />
+      </div>
+
+      <div class="filter-field">
+        <label for="stockFilter">
+          Stok Durumu
+        </label>
+
+        <p-select
+          inputId="stockFilter"
+          [options]="stockFilterOptions"
+          optionLabel="label"
+          optionValue="value"
+          [(ngModel)]="stockFilter"
+          (ngModelChange)="onStockFilterChange($event)"
+          class="stock-filter-select"
+        ></p-select>
+      </div>
+
+      <div class="filter-clear-action">
+        <p-button
+          label="Filtreleri Temizle"
+          severity="secondary"
+          [disabled]="!hasActiveFilters()"
+          (onClick)="clearFilters()"
+        ></p-button>
+      </div>
+
+    </div>
+
+    <div class="results-summary">
+      <span>
+        Toplam {{ totalCount() }} kitap bulundu.
+      </span>
+
+      @if (totalPages() > 0) {
+        <span>
+          Sayfa {{ pageNumber() }}
+          / {{ totalPages() }}
+        </span>
+      }
+    </div>
+
     <p-table
       [value]="books()"
       [loading]="loading()"
@@ -87,7 +147,8 @@
                   label="Ödünç Al"
                   [disabled]="book.stock <= 0"
                   [loading]="
-                    borrowingBookId() === book.id
+                    borrowingBookId() ===
+                    book.id
                   "
                   (onClick)="borrowBook(book)"
                 ></p-button>
@@ -105,7 +166,8 @@
                   label="Kaldır"
                   severity="danger"
                   [loading]="
-                    deletingBookId() === book.id
+                    deletingBookId() ===
+                    book.id
                   "
                   (onClick)="confirmDelete(book)"
                 ></p-button>
@@ -120,12 +182,32 @@
       <ng-template #emptymessage>
         <tr>
           <td colspan="5">
-            Henüz kitap bulunmuyor.
+
+            @if (hasActiveFilters()) {
+              Arama veya filtre kriterlerine uygun
+              kitap bulunamadı.
+            } @else {
+              Henüz kitap bulunmuyor.
+            }
+
           </td>
         </tr>
       </ng-template>
 
     </p-table>
+
+    <div class="paginator-container">
+      <p-paginator
+        [first]="first()"
+        [rows]="pageSize()"
+        [totalRecords]="totalCount()"
+        [rowsPerPageOptions]="rowsPerPageOptions"
+        [showCurrentPageReport]="true"
+        currentPageReportTemplate="{first} - {last} / {totalRecords} kitap"
+        (onPageChange)="onPageChange($event)"
+      ></p-paginator>
+    </div>
+
   </div>
 </div>
 

@@ -6,8 +6,12 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+
 import {
+  debounceTime,
+  distinctUntilChanged,
   finalize,
+  Subject,
   Subscription,
   timeout
 } from 'rxjs';
@@ -18,16 +22,38 @@ import { ConfirmationService } from 'primeng/api';
 import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
+import { PaginatorModule } from 'primeng/paginator';
+import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
 
-import { Book } from '../../../core/models/book.models';
-import { AuthService } from '../../../core/services/auth.service';
-import { BookService } from '../../../core/services/book.service';
-import { BorrowService } from '../../../core/services/borrow.service';
-import { SignalRService } from '../../../core/services/signalr.service';
+import {
+  Book
+} from '../../../core/models/book.models';
+
+import {
+  AuthService
+} from '../../../core/services/auth.service';
+
+import {
+  BookService
+} from '../../../core/services/book.service';
+
+import {
+  BorrowService
+} from '../../../core/services/borrow.service';
+
+import {
+  SignalRService
+} from '../../../core/services/signalr.service';
+
+type StockFilterValue =
+  'all' |
+  'inStock' |
+  'outOfStock';
 
 @Component({
   selector: 'app-book-list',
+
   imports: [
     FormsModule,
     ButtonModule,
@@ -35,13 +61,20 @@ import { SignalRService } from '../../../core/services/signalr.service';
     DialogModule,
     InputNumberModule,
     InputTextModule,
+    PaginatorModule,
+    SelectModule,
     TableModule
   ],
+
   providers: [
     ConfirmationService
   ],
-  templateUrl: './book-list.component.html',
-  styleUrl: './book-list.component.scss'
+
+  templateUrl:
+    './book-list.component.html',
+
+  styleUrl:
+    './book-list.component.scss'
 })
 export class BookListComponent
   implements OnInit, OnDestroy {
@@ -60,38 +93,98 @@ export class BookListComponent
   errorMessage = signal('');
   successMessage = signal('');
 
+  searchText = '';
+
+  stockFilter:
+    StockFilterValue = 'all';
+
+  readonly stockFilterOptions: Array<{
+    label: string;
+    value: StockFilterValue;
+  }> = [
+    {
+      label: 'Tüm Kitaplar',
+      value: 'all'
+    },
+    {
+      label: 'Stokta Olanlar',
+      value: 'inStock'
+    },
+    {
+      label: 'Stoğu Tükenenler',
+      value: 'outOfStock'
+    }
+  ];
+
+  pageNumber = signal(1);
+  pageSize = signal(5);
+
+  first = signal(0);
+
+  totalCount = signal(0);
+  totalPages = signal(0);
+
+  readonly rowsPerPageOptions = [
+    5,
+    10
+  ];
+
   createDialogVisible = false;
   creatingBook = false;
   createDialogErrorMessage = '';
 
   newBookName = '';
   newBookAuthor = '';
-  newBookStock: number | null = 0;
+  newBookStock:
+    number | null = 0;
 
   editDialogVisible = false;
   updatingBook = false;
   editDialogErrorMessage = '';
 
-  editingBookId: number | null = null;
+  editingBookId:
+    number | null = null;
+
   editBookName = '';
   editBookAuthor = '';
-  editBookStock: number | null = 0;
+
+  editBookStock:
+    number | null = 0;
+
+  private appliedSearch = '';
+
+  private readonly searchChanges =
+    new Subject<string>();
 
   private booksChangedSubscription:
     Subscription | null = null;
 
+  private searchSubscription:
+    Subscription | null = null;
+
   private successMessageTimeout:
-    ReturnType<typeof setTimeout> | null = null;
+    ReturnType<typeof setTimeout> |
+    null = null;
 
   private readonly authorNamePattern =
     /^(?=.*\p{L})[\p{L}\p{M}.'’\- ]+$/u;
 
   constructor(
-    private readonly bookService: BookService,
-    private readonly borrowService: BorrowService,
-    private readonly authService: AuthService,
-    private readonly signalRService: SignalRService,
-    private readonly router: Router,
+    private readonly bookService:
+      BookService,
+
+    private readonly borrowService:
+      BorrowService,
+
+    private readonly authService:
+      AuthService,
+
+    private readonly signalRService:
+      SignalRService,
+
+    private readonly router:
+      Router,
+
     private readonly confirmationService:
       ConfirmationService
   ) {
@@ -101,6 +194,16 @@ export class BookListComponent
     this.isAdmin.set(
       this.authService.isAdmin()
     );
+
+    this.searchSubscription =
+      this.searchChanges
+        .pipe(
+          debounceTime(400),
+          distinctUntilChanged()
+        )
+        .subscribe(value => {
+          this.applySearch(value);
+        });
 
     this.booksChangedSubscription =
       this.signalRService
@@ -119,7 +222,15 @@ export class BookListComponent
     this.booksChangedSubscription
       ?.unsubscribe();
 
-    if (this.successMessageTimeout !== null) {
+    this.searchSubscription
+      ?.unsubscribe();
+
+    this.searchChanges.complete();
+
+    if (
+      this.successMessageTimeout !==
+      null
+    ) {
       clearTimeout(
         this.successMessageTimeout
       );
@@ -131,16 +242,91 @@ export class BookListComponent
     this.errorMessage.set('');
 
     this.bookService
-      .getAll()
+      .getPaged({
+        search:
+          this.appliedSearch ||
+          undefined,
+
+        inStock:
+          this.getInStockFilter(),
+
+        pageNumber:
+          this.pageNumber(),
+
+        pageSize:
+          this.pageSize()
+      })
       .pipe(
         timeout(10000),
+
         finalize(() => {
           this.loading.set(false);
         })
       )
       .subscribe({
-        next: books => {
-          this.books.set(books);
+        next: result => {
+          this.totalCount.set(
+            result.totalCount
+          );
+
+          this.totalPages.set(
+            result.totalPages
+          );
+
+          if (
+            result.totalCount === 0
+          ) {
+            this.books.set([]);
+
+            this.pageNumber.set(1);
+            this.first.set(0);
+
+            return;
+          }
+
+          if (
+            result.items.length === 0 &&
+            this.pageNumber() >
+              result.totalPages
+          ) {
+            const lastPage =
+              Math.max(
+                result.totalPages,
+                1
+              );
+
+            this.pageNumber.set(
+              lastPage
+            );
+
+            this.first.set(
+              (lastPage - 1) *
+              this.pageSize()
+            );
+
+            this.loadBooks();
+
+            return;
+          }
+
+          this.books.set(
+            result.items
+          );
+
+          this.pageNumber.set(
+            result.pageNumber
+          );
+
+          this.pageSize.set(
+            result.pageSize
+          );
+
+          this.first.set(
+            (
+              result.pageNumber - 1
+            ) *
+            result.pageSize
+          );
         },
 
         error: error => {
@@ -149,10 +335,14 @@ export class BookListComponent
             error
           );
 
-          if (error.name === 'TimeoutError') {
+          if (
+            error.name ===
+            'TimeoutError'
+          ) {
             this.errorMessage.set(
               'Kitap listesi 10 saniye içinde yüklenemedi.'
             );
+
             return;
           }
 
@@ -160,6 +350,7 @@ export class BookListComponent
             this.errorMessage.set(
               `Kitaplar yüklenirken hata oluştu. HTTP ${error.status}`
             );
+
             return;
           }
 
@@ -170,23 +361,108 @@ export class BookListComponent
       });
   }
 
-  borrowBook(book: Book): void {
+  onSearchChange(
+    value: string
+  ): void {
+    this.searchChanges.next(
+      value
+    );
+  }
+
+  applySearchImmediately(): void {
+    this.applySearch(
+      this.searchText
+    );
+  }
+
+  onStockFilterChange(
+    value: StockFilterValue
+  ): void {
+    this.stockFilter =
+      value;
+
+    this.resetPagination();
+
+    this.loadBooks();
+  }
+
+  onPageChange(
+    event: {
+      first?: number;
+      rows?: number;
+    }
+  ): void {
+    const first =
+      event.first ?? 0;
+
+    const rows =
+      event.rows ??
+      this.pageSize();
+
+    this.first.set(
+      first
+    );
+
+    this.pageSize.set(
+      rows
+    );
+
+    this.pageNumber.set(
+      Math.floor(
+        first / rows
+      ) + 1
+    );
+
+    this.loadBooks();
+  }
+
+  clearFilters(): void {
+    this.searchText = '';
+    this.appliedSearch = '';
+
+    this.stockFilter =
+      'all';
+
+    this.searchChanges.next('');
+
+    this.resetPagination();
+
+    this.loadBooks();
+  }
+
+  hasActiveFilters(): boolean {
+    return (
+      this.appliedSearch.length >
+        0 ||
+      this.stockFilter !==
+        'all'
+    );
+  }
+
+  borrowBook(
+    book: Book
+  ): void {
     this.errorMessage.set('');
 
     if (book.stock <= 0) {
       this.errorMessage.set(
         'Bu kitap stokta bulunmuyor.'
       );
+
       return;
     }
 
-    this.borrowingBookId.set(book.id);
+    this.borrowingBookId.set(
+      book.id
+    );
 
     this.borrowService
       .borrow(book.id)
       .pipe(
         finalize(() => {
-          this.borrowingBookId.set(null);
+          this.borrowingBookId.set(
+            null
+          );
         })
       )
       .subscribe({
@@ -195,6 +471,7 @@ export class BookListComponent
             this.errorMessage.set(
               result.message
             );
+
             return;
           }
 
@@ -212,32 +489,51 @@ export class BookListComponent
       });
   }
 
-  openEditDialog(book: Book): void {
+  openEditDialog(
+    book: Book
+  ): void {
     this.errorMessage.set('');
     this.editDialogErrorMessage = '';
 
-    this.editingBookId = book.id;
-    this.editBookName = book.name;
-    this.editBookAuthor = book.author;
-    this.editBookStock = book.stock;
+    this.editingBookId =
+      book.id;
 
-    this.editDialogVisible = true;
+    this.editBookName =
+      book.name;
+
+    this.editBookAuthor =
+      book.author;
+
+    this.editBookStock =
+      book.stock;
+
+    this.editDialogVisible =
+      true;
   }
 
   closeEditDialog(): void {
-    this.editDialogVisible = false;
-    this.editDialogErrorMessage = '';
+    this.editDialogVisible =
+      false;
 
-    this.editingBookId = null;
+    this.editDialogErrorMessage =
+      '';
+
+    this.editingBookId =
+      null;
+
     this.editBookName = '';
     this.editBookAuthor = '';
     this.editBookStock = 0;
   }
 
   updateBook(): void {
-    this.editDialogErrorMessage = '';
+    this.editDialogErrorMessage =
+      '';
 
-    if (this.editingBookId === null) {
+    if (
+      this.editingBookId ===
+      null
+    ) {
       return;
     }
 
@@ -253,30 +549,41 @@ export class BookListComponent
     if (!name) {
       this.editDialogErrorMessage =
         'Kitap adı zorunludur.';
+
       return;
     }
 
     if (!author) {
       this.editDialogErrorMessage =
         'Yazar adı zorunludur.';
+
       return;
     }
 
-    if (!this.isValidAuthorName(author)) {
+    if (
+      !this.isValidAuthorName(
+        author
+      )
+    ) {
       this.editDialogErrorMessage =
         'Yazar adı sayı veya geçersiz karakter içeremez.';
+
       return;
     }
 
     if (stock === null) {
       this.editDialogErrorMessage =
         'Stok zorunludur.';
+
       return;
     }
 
-    if (!Number.isInteger(stock)) {
+    if (
+      !Number.isInteger(stock)
+    ) {
       this.editDialogErrorMessage =
         'Stok tam sayı olmalıdır.';
+
       return;
     }
 
@@ -286,6 +593,7 @@ export class BookListComponent
     ) {
       this.editDialogErrorMessage =
         'Stok 0 ile 1000 arasında olmalıdır.';
+
       return;
     }
 
@@ -302,32 +610,43 @@ export class BookListComponent
       )
       .pipe(
         finalize(() => {
-          this.updatingBook = false;
+          this.updatingBook =
+            false;
         })
       )
       .subscribe({
         next: () => {
-          this.editDialogVisible = false;
-          this.editDialogErrorMessage = '';
+          this.editDialogVisible =
+            false;
+
+          this.editDialogErrorMessage =
+            '';
 
           this.showSuccessMessage(
             'Kitap başarıyla güncellendi.'
           );
 
-          this.editingBookId = null;
+          this.editingBookId =
+            null;
         },
 
         error: error => {
-          if (error.status === 403) {
+          if (
+            error.status === 403
+          ) {
             this.editDialogErrorMessage =
               'Bu işlem için Admin yetkisi gereklidir.';
+
             return;
           }
 
-          if (error.status === 404) {
+          if (
+            error.status === 404
+          ) {
             this.editDialogErrorMessage =
               error.error?.message ??
               'Kitap bulunamadı.';
+
             return;
           }
 
@@ -340,18 +659,23 @@ export class BookListComponent
 
   openCreateDialog(): void {
     this.errorMessage.set('');
-    this.createDialogErrorMessage = '';
+    this.createDialogErrorMessage =
+      '';
 
     this.newBookName = '';
     this.newBookAuthor = '';
     this.newBookStock = 0;
 
-    this.createDialogVisible = true;
+    this.createDialogVisible =
+      true;
   }
 
   closeCreateDialog(): void {
-    this.createDialogVisible = false;
-    this.createDialogErrorMessage = '';
+    this.createDialogVisible =
+      false;
+
+    this.createDialogErrorMessage =
+      '';
 
     this.newBookName = '';
     this.newBookAuthor = '';
@@ -359,7 +683,8 @@ export class BookListComponent
   }
 
   createBook(): void {
-    this.createDialogErrorMessage = '';
+    this.createDialogErrorMessage =
+      '';
 
     const name =
       this.newBookName.trim();
@@ -373,30 +698,41 @@ export class BookListComponent
     if (!name) {
       this.createDialogErrorMessage =
         'Kitap adı zorunludur.';
+
       return;
     }
 
     if (!author) {
       this.createDialogErrorMessage =
         'Yazar adı zorunludur.';
+
       return;
     }
 
-    if (!this.isValidAuthorName(author)) {
+    if (
+      !this.isValidAuthorName(
+        author
+      )
+    ) {
       this.createDialogErrorMessage =
         'Yazar adı sayı veya geçersiz karakter içeremez.';
+
       return;
     }
 
     if (stock === null) {
       this.createDialogErrorMessage =
         'Stok zorunludur.';
+
       return;
     }
 
-    if (!Number.isInteger(stock)) {
+    if (
+      !Number.isInteger(stock)
+    ) {
       this.createDialogErrorMessage =
         'Stok tam sayı olmalıdır.';
+
       return;
     }
 
@@ -406,6 +742,7 @@ export class BookListComponent
     ) {
       this.createDialogErrorMessage =
         'Stok 0 ile 1000 arasında olmalıdır.';
+
       return;
     }
 
@@ -419,13 +756,17 @@ export class BookListComponent
       })
       .pipe(
         finalize(() => {
-          this.creatingBook = false;
+          this.creatingBook =
+            false;
         })
       )
       .subscribe({
         next: book => {
-          this.createDialogVisible = false;
-          this.createDialogErrorMessage = '';
+          this.createDialogVisible =
+            false;
+
+          this.createDialogErrorMessage =
+            '';
 
           this.showSuccessMessage(
             `"${book.name}" başarıyla eklendi.`
@@ -433,9 +774,12 @@ export class BookListComponent
         },
 
         error: error => {
-          if (error.status === 403) {
+          if (
+            error.status === 403
+          ) {
             this.createDialogErrorMessage =
               'Bu işlem için Admin yetkisi gereklidir.';
+
             return;
           }
 
@@ -446,40 +790,47 @@ export class BookListComponent
       });
   }
 
-  private isValidAuthorName(
-    author: string
-  ): boolean {
-    return this.authorNamePattern.test(
-      author
-    );
+  confirmDelete(
+    book: Book
+  ): void {
+    this.confirmationService
+      .confirm({
+        header:
+          'Kitabı Kaldır',
+
+        message:
+          `"${book.name}" kitabını katalogdan kaldırmak istediğinize emin misiniz?`,
+
+        acceptLabel:
+          'Evet',
+
+        rejectLabel:
+          'Vazgeç',
+
+        accept: () => {
+          this.deleteBook(
+            book
+          );
+        }
+      });
   }
 
-  confirmDelete(book: Book): void {
-    this.confirmationService.confirm({
-      header: 'Kitabı Kaldır',
-
-      message:
-        `"${book.name}" kitabını katalogdan kaldırmak istediğinize emin misiniz?`,
-
-      acceptLabel: 'Evet',
-      rejectLabel: 'Vazgeç',
-
-      accept: () => {
-        this.deleteBook(book);
-      }
-    });
-  }
-
-  private deleteBook(book: Book): void {
+  private deleteBook(
+    book: Book
+  ): void {
     this.errorMessage.set('');
 
-    this.deletingBookId.set(book.id);
+    this.deletingBookId.set(
+      book.id
+    );
 
     this.bookService
       .delete(book.id)
       .pipe(
         finalize(() => {
-          this.deletingBookId.set(null);
+          this.deletingBookId.set(
+            null
+          );
         })
       )
       .subscribe({
@@ -490,18 +841,24 @@ export class BookListComponent
         },
 
         error: error => {
-          if (error.status === 403) {
+          if (
+            error.status === 403
+          ) {
             this.errorMessage.set(
               'Bu işlem için Admin yetkisi gereklidir.'
             );
+
             return;
           }
 
-          if (error.status === 409) {
+          if (
+            error.status === 409
+          ) {
             this.errorMessage.set(
               error.error?.message ??
               'Bu kitap şu anda kaldırılamaz.'
             );
+
             return;
           }
 
@@ -513,10 +870,66 @@ export class BookListComponent
       });
   }
 
+  private applySearch(
+    value: string
+  ): void {
+    const normalizedSearch =
+      value.trim();
+
+    if (
+      normalizedSearch ===
+      this.appliedSearch
+    ) {
+      return;
+    }
+
+    this.appliedSearch =
+      normalizedSearch;
+
+    this.resetPagination();
+
+    this.loadBooks();
+  }
+
+  private resetPagination(): void {
+    this.pageNumber.set(1);
+    this.first.set(0);
+  }
+
+  private getInStockFilter():
+    boolean | null {
+
+    if (
+      this.stockFilter ===
+      'inStock'
+    ) {
+      return true;
+    }
+
+    if (
+      this.stockFilter ===
+      'outOfStock'
+    ) {
+      return false;
+    }
+
+    return null;
+  }
+
+  private isValidAuthorName(
+    author: string
+  ): boolean {
+    return this.authorNamePattern
+      .test(author);
+  }
+
   private showSuccessMessage(
     message: string
   ): void {
-    if (this.successMessageTimeout !== null) {
+    if (
+      this.successMessageTimeout !==
+      null
+    ) {
       clearTimeout(
         this.successMessageTimeout
       );

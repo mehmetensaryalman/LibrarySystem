@@ -33,3 +33,18 @@ export interface RestoreBookResponse {
   message: string;
   book: ArchivedBook;
 }
+
+export interface BookFilter {
+  search?: string;
+  inStock?: boolean | null;
+  pageNumber: number;
+  pageSize: number;
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  pageNumber: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+}
