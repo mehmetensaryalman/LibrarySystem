@@ -1,37 +1,50 @@
-﻿using LibrarySystem.Application.DTOs.Books;
+﻿using LibrarySystem.Application.Common.Models;
+using LibrarySystem.Application.DTOs.Books;
 using LibrarySystem.Application.Interfaces.Books;
+using LibrarySystem.Application.Interfaces.Realtime;
 using LibrarySystem.Application.Interfaces.Repositories;
 using LibrarySystem.Domain.Entities;
-using LibrarySystem.Application.Common.Models;
 
 namespace LibrarySystem.Application.Services.Books;
 
 public class BookService : IBookService
 {
-    private readonly IBookRepository _bookRepository;
+    private readonly
+        IBookRepository _bookRepository;
 
-    public BookService(IBookRepository bookRepository)
+    private readonly
+        IRealtimeNotifier _realtimeNotifier;
+
+    public BookService(
+        IBookRepository bookRepository,
+        IRealtimeNotifier realtimeNotifier)
     {
         _bookRepository = bookRepository;
+        _realtimeNotifier = realtimeNotifier;
     }
 
-    public async Task<List<BookResponseDto>> GetAllAsync()
+    public async Task<List<BookResponseDto>>
+        GetAllAsync()
     {
-        var books = await _bookRepository.GetAllAsync();
+        var books =
+            await _bookRepository
+                .GetAllAsync();
 
         return books
-            .Select(book => new BookResponseDto
-            {
-                Id = book.Id,
-                Name = book.Name,
-                Author = book.Author,
-                Stock = book.Stock
-            })
+            .Select(book =>
+                new BookResponseDto
+                {
+                    Id = book.Id,
+                    Name = book.Name,
+                    Author = book.Author,
+                    Stock = book.Stock
+                })
             .ToList();
     }
 
-    public async Task<BookResponseDto> CreateAsync(
-        CreateBookRequestDto request)
+    public async Task<BookResponseDto>
+        CreateAsync(
+            CreateBookRequestDto request)
     {
         var book = new Book
         {
@@ -40,7 +53,11 @@ public class BookService : IBookService
             Stock = request.Stock
         };
 
-        await _bookRepository.AddAsync(book);
+        await _bookRepository
+            .AddAsync(book);
+
+        await _realtimeNotifier
+            .NotifyBooksChangedAsync();
 
         return new BookResponseDto
         {
@@ -51,39 +68,52 @@ public class BookService : IBookService
         };
     }
 
-    public async Task<BookResponseDto?> UpdateAsync(
-    int id,
-    UpdateBookRequestDto request)
-{
-    var book =
-        await _bookRepository.GetByIdAsync(id);
-
-    if (book is null)
+    public async Task<BookResponseDto?>
+        UpdateAsync(
+            int id,
+            UpdateBookRequestDto request)
     {
-        return null;
+        var book =
+            await _bookRepository
+                .GetByIdAsync(id);
+
+        if (book is null)
+        {
+            return null;
+        }
+
+        book.Name =
+            request.Name.Trim();
+
+        book.Author =
+            request.Author.Trim();
+
+        book.Stock =
+            request.Stock;
+
+        var updatedBook =
+            await _bookRepository
+                .UpdateAsync(book);
+
+        await _realtimeNotifier
+            .NotifyBooksChangedAsync();
+
+        return new BookResponseDto
+        {
+            Id = updatedBook.Id,
+            Name = updatedBook.Name,
+            Author = updatedBook.Author,
+            Stock = updatedBook.Stock
+        };
     }
 
-    book.Name = request.Name.Trim();
-    book.Author = request.Author.Trim();
-    book.Stock = request.Stock;
-
-    var updatedBook =
-        await _bookRepository.UpdateAsync(book);
-
-    return new BookResponseDto
-    {
-        Id = updatedBook.Id,
-        Name = updatedBook.Name,
-        Author = updatedBook.Author,
-        Stock = updatedBook.Stock
-    };
-}
-
-    public async Task<List<ArchivedBookResponseDto>>
-    GetArchivedAsync()
+    public async Task<
+        List<ArchivedBookResponseDto>>
+        GetArchivedAsync()
     {
         var books =
-            await _bookRepository.GetArchivedAsync();
+            await _bookRepository
+                .GetArchivedAsync();
 
         return books
             .Select(book =>
@@ -93,12 +123,14 @@ public class BookService : IBookService
                     Name = book.Name,
                     Author = book.Author,
                     Stock = book.Stock,
-                    IsArchived = book.IsArchived
+                    IsArchived =
+                        book.IsArchived
                 })
             .ToList();
     }
 
-    public async Task<ArchivedBookResponseDto?>
+    public async Task<
+        ArchivedBookResponseDto?>
         RestoreAsync(
             int id)
     {
@@ -111,7 +143,11 @@ public class BookService : IBookService
             return null;
         }
 
-        await _bookRepository.RestoreAsync(book);
+        await _bookRepository
+            .RestoreAsync(book);
+
+        await _realtimeNotifier
+            .NotifyBooksChangedAsync();
 
         return new ArchivedBookResponseDto
         {
@@ -123,18 +159,23 @@ public class BookService : IBookService
         };
     }
 
-    public async Task<DeleteBookResult> DeleteAsync(
-    int id)
+    public async Task<DeleteBookResult>
+        DeleteAsync(
+            int id)
     {
         var book =
-            await _bookRepository.GetByIdAsync(id);
+            await _bookRepository
+                .GetByIdAsync(id);
 
         if (book is null)
         {
             return new DeleteBookResult
             {
-                Status = DeleteBookStatus.NotFound,
-                Message = "Kitap bulunamadı."
+                Status =
+                    DeleteBookStatus.NotFound,
+
+                Message =
+                    "Kitap bulunamadı."
             };
         }
 
@@ -147,7 +188,8 @@ public class BookService : IBookService
             return new DeleteBookResult
             {
                 Status =
-                    DeleteBookStatus.ActiveBorrowExists,
+                    DeleteBookStatus
+                        .ActiveBorrowExists,
 
                 Message =
                     "Bu kitap şu anda ödünç alındığı için katalogdan kaldırılamaz."
@@ -160,22 +202,32 @@ public class BookService : IBookService
 
         if (hasBorrowHistory)
         {
-            await _bookRepository.ArchiveAsync(book);
+            await _bookRepository
+                .ArchiveAsync(book);
+
+            await _realtimeNotifier
+                .NotifyBooksChangedAsync();
 
             return new DeleteBookResult
             {
-                Status = DeleteBookStatus.Archived,
+                Status =
+                    DeleteBookStatus.Archived,
 
                 Message =
                     "Kitap ödünç geçmişi bulunduğu için silinmedi, arşivlendi."
             };
         }
 
-        await _bookRepository.DeleteAsync(book);
+        await _bookRepository
+            .DeleteAsync(book);
+
+        await _realtimeNotifier
+            .NotifyBooksChangedAsync();
 
         return new DeleteBookResult
         {
-            Status = DeleteBookStatus.Deleted,
+            Status =
+                DeleteBookStatus.Deleted,
 
             Message =
                 "Kitap başarıyla silindi."

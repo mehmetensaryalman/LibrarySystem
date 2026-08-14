@@ -1,9 +1,12 @@
 using System.Text;
+using LibrarySystem.Api.Hubs;
 using LibrarySystem.Api.OpenApi;
+using LibrarySystem.Api.Realtime;
 using LibrarySystem.Application.Common.Constants;
 using LibrarySystem.Application.Interfaces.Auth;
 using LibrarySystem.Application.Interfaces.Books;
 using LibrarySystem.Application.Interfaces.Borrow;
+using LibrarySystem.Application.Interfaces.Realtime;
 using LibrarySystem.Application.Interfaces.Repositories;
 using LibrarySystem.Application.Services.Books;
 using LibrarySystem.Application.Services.Borrow;
@@ -17,21 +20,26 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder =
+    WebApplication.CreateBuilder(args);
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("Frontend", policy =>
-    {
-        policy
-            .WithOrigins(
-                "http://localhost:4200")
-            .AllowAnyHeader()
-            .AllowAnyMethod();
-    });
+    options.AddPolicy(
+        "Frontend",
+        policy =>
+        {
+            policy
+                .WithOrigins(
+                    "http://localhost:4200")
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        });
 });
 
-builder.Services.AddDbContext<LibraryDbContext>(
+builder.Services.AddDbContext<
+    LibraryDbContext>(
     options =>
         options.UseSqlServer(
             builder.Configuration
@@ -43,16 +51,27 @@ builder.Services
         ApplicationUser,
         IdentityRole>(options =>
         {
-            options.User.RequireUniqueEmail = true;
+            options.User.RequireUniqueEmail =
+                true;
 
-            options.Password.RequiredLength = 6;
-            options.Password.RequireDigit = true;
-            options.Password.RequireLowercase = true;
-            options.Password.RequireUppercase = true;
+            options.Password.RequiredLength =
+                6;
+
+            options.Password.RequireDigit =
+                true;
+
+            options.Password.RequireLowercase =
+                true;
+
+            options.Password.RequireUppercase =
+                true;
+
             options.Password
-                .RequireNonAlphanumeric = false;
+                .RequireNonAlphanumeric =
+                false;
         })
-    .AddEntityFrameworkStores<LibraryDbContext>()
+    .AddEntityFrameworkStores<
+        LibraryDbContext>()
     .AddDefaultTokenProviders();
 
 var jwtKey =
@@ -71,10 +90,12 @@ var jwtAudience =
         "Jwt:Audience configuration is missing.");
 
 var expirationMinutes =
-    builder.Configuration.GetValue<int>(
-        "Jwt:ExpirationMinutes");
+    builder.Configuration
+        .GetValue<int>(
+            "Jwt:ExpirationMinutes");
 
-builder.Services.AddScoped<IJwtTokenService>(
+builder.Services.AddScoped<
+    IJwtTokenService>(
     _ =>
         new JwtTokenService(
             jwtKey,
@@ -102,6 +123,12 @@ builder.Services.AddScoped<
     IBorrowService,
     BorrowService>();
 
+builder.Services.AddScoped<
+    IRealtimeNotifier,
+    SignalRRealtimeNotifier>();
+
+builder.Services.AddSignalR();
+
 builder.Services
     .AddAuthentication(options =>
     {
@@ -121,37 +148,73 @@ builder.Services
                 ValidateIssuer = true,
                 ValidateAudience = true,
                 ValidateLifetime = true,
-                ValidateIssuerSigningKey = true,
+                ValidateIssuerSigningKey =
+                    true,
 
                 ValidIssuer = jwtIssuer,
                 ValidAudience = jwtAudience,
 
                 IssuerSigningKey =
                     new SymmetricSecurityKey(
-                        Encoding.UTF8.GetBytes(
-                            jwtKey)),
+                        Encoding.UTF8
+                            .GetBytes(
+                                jwtKey)),
 
                 ClockSkew = TimeSpan.Zero
             };
+
+        options.Events =
+            new JwtBearerEvents
+            {
+                OnMessageReceived =
+                    context =>
+                    {
+                        var accessToken =
+                            context.Request
+                                .Query[
+                                    "access_token"]
+                                .ToString();
+
+                        var path =
+                            context.HttpContext
+                                .Request
+                                .Path;
+
+                        if (
+                            !string.IsNullOrWhiteSpace(
+                                accessToken) &&
+                            path.StartsWithSegments(
+                                "/hubs/library"))
+                        {
+                            context.Token =
+                                accessToken;
+                        }
+
+                        return Task.CompletedTask;
+                    }
+            };
     });
 
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy(
-        "BorrowerOnly",
-        policy =>
-        {
-            policy.RequireAuthenticatedUser();
+builder.Services.AddAuthorization(
+    options =>
+    {
+        options.AddPolicy(
+            "BorrowerOnly",
+            policy =>
+            {
+                policy
+                    .RequireAuthenticatedUser();
 
-            policy.RequireRole(
-                RoleNames.User);
+                policy.RequireRole(
+                    RoleNames.User);
 
-            policy.RequireAssertion(
-                context =>
-                    !context.User.IsInRole(
-                        RoleNames.Admin));
-        });
-});
+                policy.RequireAssertion(
+                    context =>
+                        !context.User
+                            .IsInRole(
+                                RoleNames.Admin));
+            });
+    });
 
 builder.Services.AddControllers();
 
@@ -169,22 +232,26 @@ using (var scope =
     var roleManager =
         scope.ServiceProvider
             .GetRequiredService<
-                RoleManager<IdentityRole>>();
+                RoleManager<
+                    IdentityRole>>();
 
     var userManager =
         scope.ServiceProvider
             .GetRequiredService<
-                UserManager<ApplicationUser>>();
+                UserManager<
+                    ApplicationUser>>();
 
-    await IdentitySeeder.SeedRolesAsync(
-        roleManager);
+    await IdentitySeeder
+        .SeedRolesAsync(
+            roleManager);
 
-    await IdentitySeeder.SeedAdminAsync(
-        userManager,
-        app.Configuration[
-            "AdminSeed:Email"],
-        app.Configuration[
-            "AdminSeed:Password"]);
+    await IdentitySeeder
+        .SeedAdminAsync(
+            userManager,
+            app.Configuration[
+                "AdminSeed:Email"],
+            app.Configuration[
+                "AdminSeed:Password"]);
 
     await IdentitySeeder
         .SeedExistingUserRolesAsync(
@@ -212,5 +279,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHub<LibraryHub>(
+        "/hubs/library")
+    .RequireCors("Frontend");
 
 app.Run();

@@ -1,5 +1,6 @@
 ﻿using LibrarySystem.Application.DTOs.Borrow;
 using LibrarySystem.Application.Interfaces.Borrow;
+using LibrarySystem.Application.Interfaces.Realtime;
 using LibrarySystem.Application.Interfaces.Repositories;
 using LibrarySystem.Domain.Entities;
 
@@ -9,12 +10,18 @@ public class BorrowService : IBorrowService
 {
     private const int BorrowDurationDays = 7;
 
-    private readonly IBorrowRepository _borrowRepository;
+    private readonly
+        IBorrowRepository _borrowRepository;
+
+    private readonly
+        IRealtimeNotifier _realtimeNotifier;
 
     public BorrowService(
-        IBorrowRepository borrowRepository)
+        IBorrowRepository borrowRepository,
+        IRealtimeNotifier realtimeNotifier)
     {
         _borrowRepository = borrowRepository;
+        _realtimeNotifier = realtimeNotifier;
     }
 
     public async Task<OperationResultDto> BorrowAsync(
@@ -22,8 +29,9 @@ public class BorrowService : IBorrowService
         int bookId)
     {
         var book =
-            await _borrowRepository.GetBookByIdAsync(
-                bookId);
+            await _borrowRepository
+                .GetBookByIdAsync(
+                    bookId);
 
         if (book is null)
         {
@@ -39,14 +47,16 @@ public class BorrowService : IBorrowService
             return new OperationResultDto
             {
                 Success = false,
-                Message = "Kitap stokta bulunmuyor."
+                Message =
+                    "Kitap stokta bulunmuyor."
             };
         }
 
         var activeBorrow =
-            await _borrowRepository.GetActiveBorrowAsync(
-                userId,
-                bookId);
+            await _borrowRepository
+                .GetActiveBorrowAsync(
+                    userId,
+                    bookId);
 
         if (activeBorrow is not null)
         {
@@ -58,7 +68,8 @@ public class BorrowService : IBorrowService
             };
         }
 
-        var borrowDate = DateTime.UtcNow;
+        var borrowDate =
+            DateTime.UtcNow;
 
         var borrowRecord =
             new BorrowRecord
@@ -66,19 +77,28 @@ public class BorrowService : IBorrowService
                 UserId = userId,
                 BookId = bookId,
                 BorrowDate = borrowDate,
+
                 DueDate =
                     borrowDate.AddDays(
                         BorrowDurationDays),
+
                 IsReturned = false
             };
 
         book.Stock--;
 
         await _borrowRepository
-            .AddBorrowAsync(borrowRecord);
+            .AddBorrowAsync(
+                borrowRecord);
 
         await _borrowRepository
             .SaveChangesAsync();
+
+        await _realtimeNotifier
+            .NotifyBooksChangedAsync();
+
+        await _realtimeNotifier
+            .NotifyBorrowsChangedAsync();
 
         return new OperationResultDto
         {
@@ -93,9 +113,10 @@ public class BorrowService : IBorrowService
         int bookId)
     {
         var activeBorrow =
-            await _borrowRepository.GetActiveBorrowAsync(
-                userId,
-                bookId);
+            await _borrowRepository
+                .GetActiveBorrowAsync(
+                    userId,
+                    bookId);
 
         if (activeBorrow is null)
         {
@@ -108,25 +129,35 @@ public class BorrowService : IBorrowService
         }
 
         var book =
-            await _borrowRepository.GetBookByIdAsync(
-                bookId);
+            await _borrowRepository
+                .GetBookByIdAsync(
+                    bookId);
 
         if (book is null)
         {
             return new OperationResultDto
             {
                 Success = false,
-                Message = "Kitap bulunamadı."
+                Message =
+                    "Kitap bulunamadı."
             };
         }
 
         activeBorrow.IsReturned = true;
-        activeBorrow.ReturnDate = DateTime.UtcNow;
+
+        activeBorrow.ReturnDate =
+            DateTime.UtcNow;
 
         book.Stock++;
 
         await _borrowRepository
             .SaveChangesAsync();
+
+        await _realtimeNotifier
+            .NotifyBooksChangedAsync();
+
+        await _realtimeNotifier
+            .NotifyBorrowsChangedAsync();
 
         return new OperationResultDto
         {
@@ -136,13 +167,15 @@ public class BorrowService : IBorrowService
         };
     }
 
-    public async Task<List<BorrowedBookResponseDto>>
+    public async Task<
+        List<BorrowedBookResponseDto>>
         GetMyBooksAsync(
             string userId)
     {
         var borrowRecords =
             await _borrowRepository
-                .GetUserBorrowsAsync(userId);
+                .GetUserBorrowsAsync(
+                    userId);
 
         return borrowRecords
             .Select(record =>
@@ -161,13 +194,16 @@ public class BorrowService : IBorrowService
                         record.Book.Author,
 
                     BorrowDate =
-                        AsUtc(record.BorrowDate),
+                        AsUtc(
+                            record.BorrowDate),
 
                     DueDate =
-                        AsUtc(record.DueDate),
+                        AsUtc(
+                            record.DueDate),
 
                     ReturnDate =
-                        AsUtc(record.ReturnDate),
+                        AsUtc(
+                            record.ReturnDate),
 
                     IsReturned =
                         record.IsReturned
@@ -175,7 +211,8 @@ public class BorrowService : IBorrowService
             .ToList();
     }
 
-    public async Task<List<AdminBorrowResponseDto>>
+    public async Task<
+        List<AdminBorrowResponseDto>>
         GetAllBorrowsForAdminAsync()
     {
         var borrowRecords =
@@ -220,13 +257,16 @@ public class BorrowService : IBorrowService
                         record.Book.Author,
 
                     BorrowDate =
-                        AsUtc(record.BorrowDate),
+                        AsUtc(
+                            record.BorrowDate),
 
                     DueDate =
-                        AsUtc(record.DueDate),
+                        AsUtc(
+                            record.DueDate),
 
                     ReturnDate =
-                        AsUtc(record.ReturnDate),
+                        AsUtc(
+                            record.ReturnDate),
 
                     IsReturned =
                         record.IsReturned
