@@ -43,6 +43,15 @@ public class LibraryDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(x => x.IsArchived)
                 .IsRequired()
                 .HasDefaultValue(false);
+
+            entity.HasIndex(x => new
+            {
+                x.Name,
+                x.Author
+            })
+                .IsUnique()
+                .HasDatabaseName(
+                    "UX_Books_Name_Author");
         });
 
         builder.Entity<BorrowRecord>(entity =>
