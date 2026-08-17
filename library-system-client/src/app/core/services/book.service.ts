@@ -40,6 +40,10 @@ export class BookService {
     let params =
       new HttpParams()
         .set(
+          'sortBy',
+          filter.sortBy
+        )
+        .set(
           'pageNumber',
           filter.pageNumber.toString()
         )

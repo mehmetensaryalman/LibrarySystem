@@ -75,7 +75,23 @@
           optionValue="value"
           [(ngModel)]="stockFilter"
           (ngModelChange)="onStockFilterChange($event)"
-          class="stock-filter-select"
+          class="filter-select"
+        ></p-select>
+      </div>
+
+      <div class="filter-field">
+        <label for="sortBy">
+          Sıralama
+        </label>
+
+        <p-select
+          inputId="sortBy"
+          [options]="sortOptions"
+          optionLabel="label"
+          optionValue="value"
+          [(ngModel)]="sortBy"
+          (ngModelChange)="onSortChange($event)"
+          class="filter-select"
         ></p-select>
       </div>
 
@@ -212,8 +228,6 @@
 </div>
 
 
-<!-- ADMIN: SAĞ ALT KİTAP EKLE BUTONU -->
-
 @if (isAdmin()) {
   <div class="floating-create-book-button">
     <p-button
@@ -224,8 +238,6 @@
   </div>
 }
 
-
-<!-- ADMIN: KİTAP EKLE -->
 
 <p-dialog
   header="Yeni Kitap Ekle"
@@ -241,9 +253,9 @@
     (ngSubmit)="createBook()"
   >
 
-    @if (createDialogErrorMessage) {
+    @if (createDialogErrorMessage()) {
       <div class="dialog-error-message">
-        {{ createDialogErrorMessage }}
+        {{ createDialogErrorMessage() }}
       </div>
     }
 
@@ -316,8 +328,6 @@
 </p-dialog>
 
 
-<!-- ADMIN: KİTAP DÜZENLE -->
-
 <p-dialog
   header="Kitabı Düzenle"
   [(visible)]="editDialogVisible"
@@ -332,9 +342,9 @@
     (ngSubmit)="updateBook()"
   >
 
-    @if (editDialogErrorMessage) {
+    @if (editDialogErrorMessage()) {
       <div class="dialog-error-message">
-        {{ editDialogErrorMessage }}
+        {{ editDialogErrorMessage() }}
       </div>
     }
 
@@ -406,7 +416,5 @@
   </form>
 </p-dialog>
 
-
-<!-- ADMIN: KALDIRMA ONAYI -->
 
 <p-confirmdialog></p-confirmdialog>

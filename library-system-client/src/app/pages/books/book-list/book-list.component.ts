@@ -27,7 +27,8 @@ import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
 
 import {
-  Book
+  Book,
+  BookSortBy
 } from '../../../core/models/book.models';
 
 import {
@@ -116,6 +117,23 @@ export class BookListComponent
     }
   ];
 
+  sortBy:
+    BookSortBy = 'newest';
+
+  readonly sortOptions: Array<{
+    label: string;
+    value: BookSortBy;
+  }> = [
+    {
+      label: 'En Yeni Eklenenler',
+      value: 'newest'
+    },
+    {
+      label: 'İsme Göre (A-Z)',
+      value: 'nameAsc'
+    }
+  ];
+
   pageNumber = signal(1);
   pageSize = signal(5);
 
@@ -131,16 +149,21 @@ export class BookListComponent
 
   createDialogVisible = false;
   creatingBook = false;
-  createDialogErrorMessage = '';
+
+  createDialogErrorMessage =
+    signal('');
 
   newBookName = '';
   newBookAuthor = '';
+
   newBookStock:
     number | null = 0;
 
   editDialogVisible = false;
   updatingBook = false;
-  editDialogErrorMessage = '';
+
+  editDialogErrorMessage =
+    signal('');
 
   editingBookId:
     number | null = null;
@@ -249,6 +272,9 @@ export class BookListComponent
 
         inStock:
           this.getInStockFilter(),
+
+        sortBy:
+          this.sortBy,
 
         pageNumber:
           this.pageNumber(),
@@ -386,35 +412,58 @@ export class BookListComponent
     this.loadBooks();
   }
 
-  onPageChange(
-    event: {
-      first?: number;
-      rows?: number;
-    }
+  onSortChange(
+    value: BookSortBy
   ): void {
-    const first =
-      event.first ?? 0;
+    this.sortBy =
+      value;
 
-    const rows =
-      event.rows ??
-      this.pageSize();
+    this.resetPagination();
 
-    this.first.set(
-      first
-    );
+    this.loadBooks();
+  }
 
+  onPageChange(
+  event: {
+    first?: number;
+    rows?: number;
+  }
+): void {
+  const rows =
+    event.rows ??
+    this.pageSize();
+
+  const pageSizeChanged =
+    rows !== this.pageSize();
+
+  if (pageSizeChanged) {
     this.pageSize.set(
       rows
     );
 
-    this.pageNumber.set(
-      Math.floor(
-        first / rows
-      ) + 1
-    );
+    this.pageNumber.set(1);
+    this.first.set(0);
 
     this.loadBooks();
+
+    return;
   }
+
+  const first =
+    event.first ?? 0;
+
+  this.first.set(
+    first
+  );
+
+  this.pageNumber.set(
+    Math.floor(
+      first / rows
+    ) + 1
+  );
+
+  this.loadBooks();
+}
 
   clearFilters(): void {
     this.searchText = '';
@@ -422,6 +471,9 @@ export class BookListComponent
 
     this.stockFilter =
       'all';
+
+    this.sortBy =
+      'newest';
 
     this.searchChanges.next('');
 
@@ -435,7 +487,9 @@ export class BookListComponent
       this.appliedSearch.length >
         0 ||
       this.stockFilter !==
-        'all'
+        'all' ||
+      this.sortBy !==
+        'newest'
     );
   }
 
@@ -493,7 +547,9 @@ export class BookListComponent
     book: Book
   ): void {
     this.errorMessage.set('');
-    this.editDialogErrorMessage = '';
+
+    this.editDialogErrorMessage
+      .set('');
 
     this.editingBookId =
       book.id;
@@ -515,8 +571,8 @@ export class BookListComponent
     this.editDialogVisible =
       false;
 
-    this.editDialogErrorMessage =
-      '';
+    this.editDialogErrorMessage
+      .set('');
 
     this.editingBookId =
       null;
@@ -527,8 +583,8 @@ export class BookListComponent
   }
 
   updateBook(): void {
-    this.editDialogErrorMessage =
-      '';
+    this.editDialogErrorMessage
+      .set('');
 
     if (
       this.editingBookId ===
@@ -547,15 +603,19 @@ export class BookListComponent
       this.editBookStock;
 
     if (!name) {
-      this.editDialogErrorMessage =
-        'Kitap adı zorunludur.';
+      this.editDialogErrorMessage
+        .set(
+          'Kitap adı zorunludur.'
+        );
 
       return;
     }
 
     if (!author) {
-      this.editDialogErrorMessage =
-        'Yazar adı zorunludur.';
+      this.editDialogErrorMessage
+        .set(
+          'Yazar adı zorunludur.'
+        );
 
       return;
     }
@@ -565,15 +625,19 @@ export class BookListComponent
         author
       )
     ) {
-      this.editDialogErrorMessage =
-        'Yazar adı sayı veya geçersiz karakter içeremez.';
+      this.editDialogErrorMessage
+        .set(
+          'Yazar adı sayı veya geçersiz karakter içeremez.'
+        );
 
       return;
     }
 
     if (stock === null) {
-      this.editDialogErrorMessage =
-        'Stok zorunludur.';
+      this.editDialogErrorMessage
+        .set(
+          'Stok zorunludur.'
+        );
 
       return;
     }
@@ -581,8 +645,10 @@ export class BookListComponent
     if (
       !Number.isInteger(stock)
     ) {
-      this.editDialogErrorMessage =
-        'Stok tam sayı olmalıdır.';
+      this.editDialogErrorMessage
+        .set(
+          'Stok tam sayı olmalıdır.'
+        );
 
       return;
     }
@@ -591,8 +657,10 @@ export class BookListComponent
       stock < 0 ||
       stock > 1000
     ) {
-      this.editDialogErrorMessage =
-        'Stok 0 ile 1000 arasında olmalıdır.';
+      this.editDialogErrorMessage
+        .set(
+          'Stok 0 ile 1000 arasında olmalıdır.'
+        );
 
       return;
     }
@@ -619,8 +687,8 @@ export class BookListComponent
           this.editDialogVisible =
             false;
 
-          this.editDialogErrorMessage =
-            '';
+          this.editDialogErrorMessage
+            .set('');
 
           this.showSuccessMessage(
             'Kitap başarıyla güncellendi.'
@@ -634,8 +702,10 @@ export class BookListComponent
           if (
             error.status === 403
           ) {
-            this.editDialogErrorMessage =
-              'Bu işlem için Admin yetkisi gereklidir.';
+            this.editDialogErrorMessage
+              .set(
+                'Bu işlem için Admin yetkisi gereklidir.'
+              );
 
             return;
           }
@@ -643,24 +713,41 @@ export class BookListComponent
           if (
             error.status === 404
           ) {
-            this.editDialogErrorMessage =
-              error.error?.message ??
-              'Kitap bulunamadı.';
+            this.editDialogErrorMessage
+              .set(
+                error.error?.message ??
+                'Kitap bulunamadı.'
+              );
 
             return;
           }
 
-          this.editDialogErrorMessage =
-            error.error?.message ??
-            'Kitap güncellenirken bir hata oluştu.';
+          if (
+            error.status === 409
+          ) {
+            this.editDialogErrorMessage
+              .set(
+                error.error?.message ??
+                'Bu kitap ve yazar bilgileriyle kayıtlı başka bir kitap zaten mevcut.'
+              );
+
+            return;
+          }
+
+          this.editDialogErrorMessage
+            .set(
+              error.error?.message ??
+              'Kitap güncellenirken bir hata oluştu.'
+            );
         }
       });
   }
 
   openCreateDialog(): void {
     this.errorMessage.set('');
-    this.createDialogErrorMessage =
-      '';
+
+    this.createDialogErrorMessage
+      .set('');
 
     this.newBookName = '';
     this.newBookAuthor = '';
@@ -674,8 +761,8 @@ export class BookListComponent
     this.createDialogVisible =
       false;
 
-    this.createDialogErrorMessage =
-      '';
+    this.createDialogErrorMessage
+      .set('');
 
     this.newBookName = '';
     this.newBookAuthor = '';
@@ -683,8 +770,8 @@ export class BookListComponent
   }
 
   createBook(): void {
-    this.createDialogErrorMessage =
-      '';
+    this.createDialogErrorMessage
+      .set('');
 
     const name =
       this.newBookName.trim();
@@ -696,15 +783,19 @@ export class BookListComponent
       this.newBookStock;
 
     if (!name) {
-      this.createDialogErrorMessage =
-        'Kitap adı zorunludur.';
+      this.createDialogErrorMessage
+        .set(
+          'Kitap adı zorunludur.'
+        );
 
       return;
     }
 
     if (!author) {
-      this.createDialogErrorMessage =
-        'Yazar adı zorunludur.';
+      this.createDialogErrorMessage
+        .set(
+          'Yazar adı zorunludur.'
+        );
 
       return;
     }
@@ -714,15 +805,19 @@ export class BookListComponent
         author
       )
     ) {
-      this.createDialogErrorMessage =
-        'Yazar adı sayı veya geçersiz karakter içeremez.';
+      this.createDialogErrorMessage
+        .set(
+          'Yazar adı sayı veya geçersiz karakter içeremez.'
+        );
 
       return;
     }
 
     if (stock === null) {
-      this.createDialogErrorMessage =
-        'Stok zorunludur.';
+      this.createDialogErrorMessage
+        .set(
+          'Stok zorunludur.'
+        );
 
       return;
     }
@@ -730,8 +825,10 @@ export class BookListComponent
     if (
       !Number.isInteger(stock)
     ) {
-      this.createDialogErrorMessage =
-        'Stok tam sayı olmalıdır.';
+      this.createDialogErrorMessage
+        .set(
+          'Stok tam sayı olmalıdır.'
+        );
 
       return;
     }
@@ -740,8 +837,10 @@ export class BookListComponent
       stock < 0 ||
       stock > 1000
     ) {
-      this.createDialogErrorMessage =
-        'Stok 0 ile 1000 arasında olmalıdır.';
+      this.createDialogErrorMessage
+        .set(
+          'Stok 0 ile 1000 arasında olmalıdır.'
+        );
 
       return;
     }
@@ -765,8 +864,8 @@ export class BookListComponent
           this.createDialogVisible =
             false;
 
-          this.createDialogErrorMessage =
-            '';
+          this.createDialogErrorMessage
+            .set('');
 
           this.showSuccessMessage(
             `"${book.name}" başarıyla eklendi.`
@@ -777,15 +876,31 @@ export class BookListComponent
           if (
             error.status === 403
           ) {
-            this.createDialogErrorMessage =
-              'Bu işlem için Admin yetkisi gereklidir.';
+            this.createDialogErrorMessage
+              .set(
+                'Bu işlem için Admin yetkisi gereklidir.'
+              );
 
             return;
           }
 
-          this.createDialogErrorMessage =
-            error.error?.message ??
-            'Kitap eklenirken bir hata oluştu.';
+          if (
+            error.status === 409
+          ) {
+            this.createDialogErrorMessage
+              .set(
+                error.error?.message ??
+                'Bu kitap ve yazar bilgileriyle kayıtlı bir kitap zaten mevcut.'
+              );
+
+            return;
+          }
+
+          this.createDialogErrorMessage
+            .set(
+              error.error?.message ??
+              'Kitap eklenirken bir hata oluştu.'
+            );
         }
       });
   }

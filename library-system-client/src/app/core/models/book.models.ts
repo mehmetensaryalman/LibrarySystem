@@ -34,9 +34,14 @@ export interface RestoreBookResponse {
   book: ArchivedBook;
 }
 
+export type BookSortBy =
+  'newest' |
+  'nameAsc';
+
 export interface BookFilter {
   search?: string;
   inStock?: boolean | null;
+  sortBy: BookSortBy;
   pageNumber: number;
   pageSize: number;
 }
