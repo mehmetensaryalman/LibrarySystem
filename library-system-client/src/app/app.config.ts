@@ -1,32 +1,66 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZoneChangeDetection } from '@angular/core';
-import { provideRouter } from '@angular/router';
-import { routes } from './app.routes';
-import { providePrimeNG } from 'primeng/config';
-import Aura from '@primeuix/themes/aura';
+import {
+  ApplicationConfig,
+  provideBrowserGlobalErrorListeners,
+  provideZoneChangeDetection
+} from '@angular/core';
+
+import {
+  provideRouter
+} from '@angular/router';
+
 import {
   provideHttpClient,
   withInterceptors
 } from '@angular/common/http';
 
-import { authInterceptor } from './core/interceptors/auth.interceptor';
+import {
+  providePrimeNG
+} from 'primeng/config';
 
-export const appConfig: ApplicationConfig = {
+import Aura from '@primeuix/themes/aura';
+
+import {
+  routes
+} from './app.routes';
+
+import {
+  authInterceptor
+} from './core/interceptors/auth.interceptor';
+
+import {
+  primeUiLicenseKey
+} from './core/config/primeui-license.generated';
+
+export const appConfig:
+  ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideZoneChangeDetection({ eventCoalescing: true }),
-    provideRouter(routes),
-    
+
+    provideZoneChangeDetection({
+      eventCoalescing: true
+    }),
+
+    provideRouter(
+      routes
+    ),
+
     provideHttpClient(
-  withInterceptors([authInterceptor])
-),
+      withInterceptors([
+        authInterceptor
+      ])
+    ),
 
     providePrimeNG({
-  theme: {
-    preset: Aura,
-    options: {
-      darkModeSelector: false
-    }
-  }
-})
+      license:
+        primeUiLicenseKey,
+
+      theme: {
+        preset: Aura,
+
+        options: {
+          darkModeSelector: false
+        }
+      }
+    })
   ]
 };

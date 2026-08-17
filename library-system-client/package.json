@@ -3,8 +3,12 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
+    "generate:primeui-license": "node scripts/generate-primeui-license.mjs",
+    "prestart": "npm run generate:primeui-license",
     "start": "ng serve",
+    "prebuild": "npm run generate:primeui-license",
     "build": "ng build",
+    "prewatch": "npm run generate:primeui-license",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },

@@ -29,6 +29,9 @@ yarn-error.log
 !.vscode/mcp.json
 .history/*
 
+# PrimeUI local license configuration
+/src/app/core/config/primeui-license.generated.ts
+
 # Miscellaneous
 /.angular/cache
 .sass-cache/
