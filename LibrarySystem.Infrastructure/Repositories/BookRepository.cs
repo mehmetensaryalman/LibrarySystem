@@ -1,7 +1,9 @@
-﻿using LibrarySystem.Application.Common.Models;
+﻿using LibrarySystem.Application.Common.Exceptions;
+using LibrarySystem.Application.Common.Models;
 using LibrarySystem.Application.Interfaces.Repositories;
 using LibrarySystem.Domain.Entities;
 using LibrarySystem.Infrastructure.Persistence;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace LibrarySystem.Infrastructure.Repositories;
@@ -173,8 +175,21 @@ public class BookRepository : IBookRepository
         await _dbContext.Books
             .AddAsync(book);
 
-        await _dbContext
-            .SaveChangesAsync();
+        try
+        {
+            await _dbContext
+                .SaveChangesAsync();
+        }
+        catch (
+            DbUpdateException exception)
+            when (
+                IsDuplicateBookViolation(
+                    exception))
+        {
+            throw new DuplicateBookException(
+                "Bu kitap ve yazar bilgileriyle kayıtlı bir kitap zaten mevcut.",
+                exception);
+        }
 
         return book;
     }
@@ -183,8 +198,21 @@ public class BookRepository : IBookRepository
         UpdateAsync(
             Book book)
     {
-        await _dbContext
-            .SaveChangesAsync();
+        try
+        {
+            await _dbContext
+                .SaveChangesAsync();
+        }
+        catch (
+            DbUpdateException exception)
+            when (
+                IsDuplicateBookViolation(
+                    exception))
+        {
+            throw new DuplicateBookException(
+                "Bu kitap ve yazar bilgileriyle kayıtlı bir kitap zaten mevcut.",
+                exception);
+        }
 
         return book;
     }
@@ -241,5 +269,41 @@ public class BookRepository : IBookRepository
 
         await _dbContext
             .SaveChangesAsync();
+    }
+
+    private static bool
+        IsDuplicateBookViolation(
+            DbUpdateException exception)
+    {
+        if (
+            exception.InnerException
+            is not SqlException sqlException)
+        {
+            return false;
+        }
+
+        foreach (
+            SqlError error
+            in sqlException.Errors)
+        {
+            var isDuplicateError =
+                error.Number == 2601 ||
+                error.Number == 2627;
+
+            var isBookUniqueIndex =
+                error.Message.Contains(
+                    "UX_Books_Name_Author",
+                    StringComparison
+                        .OrdinalIgnoreCase);
+
+            if (
+                isDuplicateError &&
+                isBookUniqueIndex)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

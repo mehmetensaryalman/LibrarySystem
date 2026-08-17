@@ -7,4 +7,13 @@ public class DuplicateBookException : Exception
         : base(message)
     {
     }
+
+    public DuplicateBookException(
+        string message,
+        Exception innerException)
+        : base(
+            message,
+            innerException)
+    {
+    }
 }

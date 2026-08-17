@@ -168,7 +168,7 @@ public class BookService : IBookService
         if (duplicateBookExists)
         {
             throw new DuplicateBookException(
-                "Bu kitap ve yazar bilgileriyle kayıtlı başka bir kitap zaten mevcut.");
+                "Bu kitap ve yazar bilgileriyle kayıtlı bir kitap zaten mevcut.");
         }
 
         book.Name = name;
