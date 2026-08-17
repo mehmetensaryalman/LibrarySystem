@@ -212,32 +212,34 @@
 
     </p-table>
 
-    <div class="paginator-container">
-      <p-paginator
-        [first]="first()"
-        [rows]="pageSize()"
-        [totalRecords]="totalCount()"
-        [rowsPerPageOptions]="rowsPerPageOptions"
-        [showCurrentPageReport]="true"
-        currentPageReportTemplate="{first} - {last} / {totalRecords} kitap"
-        (onPageChange)="onPageChange($event)"
-      ></p-paginator>
+    <div class="table-footer">
+
+  <div class="paginator-container">
+    <p-paginator
+      [first]="first()"
+      [rows]="pageSize()"
+      [totalRecords]="totalCount()"
+      [rowsPerPageOptions]="rowsPerPageOptions"
+      [showCurrentPageReport]="true"
+      currentPageReportTemplate="{first} - {last} / {totalRecords} kitap"
+      (onPageChange)="onPageChange($event)"
+    ></p-paginator>
+  </div>
+
+  @if (isAdmin()) {
+    <div class="create-book-action">
+      <p-button
+        label="Kitap Ekle"
+        styleClass="app-floating-button"
+        (onClick)="openCreateDialog()"
+      ></p-button>
     </div>
+  }
+
+</div>
 
   </div>
 </div>
-
-
-@if (isAdmin()) {
-  <div class="floating-create-book-button">
-    <p-button
-      label="Kitap Ekle"
-      styleClass="app-floating-button"
-      (onClick)="openCreateDialog()"
-    ></p-button>
-  </div>
-}
-
 
 <p-dialog
   header="Yeni Kitap Ekle"
