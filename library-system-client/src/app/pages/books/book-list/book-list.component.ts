@@ -174,6 +174,12 @@ export class BookListComponent
   editBookStock:
     number | null = 0;
 
+  private originalEditBookName = '';
+  private originalEditBookAuthor = '';
+
+  private originalEditBookStock:
+    number | null = null;
+
   private appliedSearch = '';
 
   private readonly searchChanges =
@@ -424,46 +430,46 @@ export class BookListComponent
   }
 
   onPageChange(
-  event: {
-    first?: number;
-    rows?: number;
-  }
-): void {
-  const rows =
-    event.rows ??
-    this.pageSize();
+    event: {
+      first?: number;
+      rows?: number;
+    }
+  ): void {
+    const rows =
+      event.rows ??
+      this.pageSize();
 
-  const pageSizeChanged =
-    rows !== this.pageSize();
+    const pageSizeChanged =
+      rows !== this.pageSize();
 
-  if (pageSizeChanged) {
-    this.pageSize.set(
-      rows
+    if (pageSizeChanged) {
+      this.pageSize.set(
+        rows
+      );
+
+      this.pageNumber.set(1);
+      this.first.set(0);
+
+      this.loadBooks();
+
+      return;
+    }
+
+    const first =
+      event.first ?? 0;
+
+    this.first.set(
+      first
     );
 
-    this.pageNumber.set(1);
-    this.first.set(0);
+    this.pageNumber.set(
+      Math.floor(
+        first / rows
+      ) + 1
+    );
 
     this.loadBooks();
-
-    return;
   }
-
-  const first =
-    event.first ?? 0;
-
-  this.first.set(
-    first
-  );
-
-  this.pageNumber.set(
-    Math.floor(
-      first / rows
-    ) + 1
-  );
-
-  this.loadBooks();
-}
 
   clearFilters(): void {
     this.searchText = '';
@@ -563,6 +569,15 @@ export class BookListComponent
     this.editBookStock =
       book.stock;
 
+    this.originalEditBookName =
+      book.name.trim();
+
+    this.originalEditBookAuthor =
+      book.author.trim();
+
+    this.originalEditBookStock =
+      book.stock;
+
     this.editDialogVisible =
       true;
   }
@@ -580,6 +595,12 @@ export class BookListComponent
     this.editBookName = '';
     this.editBookAuthor = '';
     this.editBookStock = 0;
+
+    this.originalEditBookName = '';
+    this.originalEditBookAuthor = '';
+
+    this.originalEditBookStock =
+      null;
   }
 
   updateBook(): void {
@@ -665,6 +686,20 @@ export class BookListComponent
       return;
     }
 
+    const hasChanges =
+      name !==
+        this.originalEditBookName ||
+      author !==
+        this.originalEditBookAuthor ||
+      stock !==
+        this.originalEditBookStock;
+
+    if (!hasChanges) {
+      this.closeEditDialog();
+
+      return;
+    }
+
     this.updatingBook = true;
 
     this.bookService
@@ -684,18 +719,11 @@ export class BookListComponent
       )
       .subscribe({
         next: () => {
-          this.editDialogVisible =
-            false;
-
-          this.editDialogErrorMessage
-            .set('');
+          this.closeEditDialog();
 
           this.showSuccessMessage(
             'Kitap başarıyla güncellendi.'
           );
-
-          this.editingBookId =
-            null;
         },
 
         error: error => {
@@ -728,7 +756,7 @@ export class BookListComponent
             this.editDialogErrorMessage
               .set(
                 error.error?.message ??
-                'Bu kitap ve yazar bilgileriyle kayıtlı başka bir kitap zaten mevcut.'
+                'Bu kitap ve yazar bilgileriyle kayıtlı bir kitap zaten mevcut.'
               );
 
             return;
@@ -900,7 +928,7 @@ export class BookListComponent
             .set(
               error.error?.message ??
               'Kitap eklenirken bir hata oluştu.'
-            );
+          );
         }
       });
   }
