@@ -78,6 +78,8 @@ public class BookRepository : IBookRepository
                     query
                         .OrderBy(book =>
                             book.Name)
+                        .ThenBy(book =>
+                            book.Author)
                         .ThenByDescending(book =>
                             book.Id),
 
@@ -113,6 +115,8 @@ public class BookRepository : IBookRepository
                 book.IsArchived)
             .OrderBy(book =>
                 book.Name)
+            .ThenBy(book =>
+                book.Author)
             .ThenBy(book =>
                 book.Id)
             .ToListAsync();
