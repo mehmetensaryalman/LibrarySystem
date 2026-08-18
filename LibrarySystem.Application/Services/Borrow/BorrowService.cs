@@ -1,4 +1,5 @@
-﻿using LibrarySystem.Application.DTOs.Borrow;
+﻿using LibrarySystem.Application.Common.Models;
+using LibrarySystem.Application.DTOs.Borrow;
 using LibrarySystem.Application.Interfaces.Borrow;
 using LibrarySystem.Application.Interfaces.Realtime;
 using LibrarySystem.Application.Interfaces.Repositories;
@@ -6,9 +7,11 @@ using LibrarySystem.Domain.Entities;
 
 namespace LibrarySystem.Application.Services.Borrow;
 
-public class BorrowService : IBorrowService
+public class BorrowService :
+    IBorrowService
 {
-    private const int BorrowDurationDays = 7;
+    private const int
+        BorrowDurationDays = 7;
 
     private readonly
         IBorrowRepository _borrowRepository;
@@ -20,13 +23,17 @@ public class BorrowService : IBorrowService
         IBorrowRepository borrowRepository,
         IRealtimeNotifier realtimeNotifier)
     {
-        _borrowRepository = borrowRepository;
-        _realtimeNotifier = realtimeNotifier;
+        _borrowRepository =
+            borrowRepository;
+
+        _realtimeNotifier =
+            realtimeNotifier;
     }
 
-    public async Task<OperationResultDto> BorrowAsync(
-        string userId,
-        int bookId)
+    public async Task<OperationResultDto>
+        BorrowAsync(
+            string userId,
+            int bookId)
     {
         var book =
             await _borrowRepository
@@ -38,7 +45,9 @@ public class BorrowService : IBorrowService
             return new OperationResultDto
             {
                 Success = false,
-                Message = "Kitap bulunamadı."
+
+                Message =
+                    "Kitap bulunamadı."
             };
         }
 
@@ -47,6 +56,7 @@ public class BorrowService : IBorrowService
             return new OperationResultDto
             {
                 Success = false,
+
                 Message =
                     "Kitap stokta bulunmuyor."
             };
@@ -63,6 +73,7 @@ public class BorrowService : IBorrowService
             return new OperationResultDto
             {
                 Success = false,
+
                 Message =
                     "Bu kitabı iade etmeden tekrar ödünç alamazsınız."
             };
@@ -74,25 +85,71 @@ public class BorrowService : IBorrowService
         var borrowRecord =
             new BorrowRecord
             {
-                UserId = userId,
-                BookId = bookId,
-                BorrowDate = borrowDate,
+                UserId =
+                    userId,
+
+                BookId =
+                    bookId,
+
+                BorrowDate =
+                    borrowDate,
 
                 DueDate =
                     borrowDate.AddDays(
                         BorrowDurationDays),
 
-                IsReturned = false
+                IsReturned =
+                    false
             };
 
-        book.Stock--;
+        var writeStatus =
+            await _borrowRepository
+                .BorrowBookAsync(
+                    borrowRecord);
 
-        await _borrowRepository
-            .AddBorrowAsync(
-                borrowRecord);
+        if (
+            writeStatus ==
+            BorrowWriteStatus
+                .DuplicateActiveBorrow)
+        {
+            return new OperationResultDto
+            {
+                Success = false,
 
-        await _borrowRepository
-            .SaveChangesAsync();
+                Message =
+                    "Bu kitabı iade etmeden tekrar ödünç alamazsınız."
+            };
+        }
+
+        if (
+            writeStatus ==
+            BorrowWriteStatus
+                .BookUnavailable)
+        {
+            var currentBook =
+                await _borrowRepository
+                    .GetBookByIdAsync(
+                        bookId);
+
+            if (currentBook is null)
+            {
+                return new OperationResultDto
+                {
+                    Success = false,
+
+                    Message =
+                        "Kitap bulunamadı."
+                };
+            }
+
+            return new OperationResultDto
+            {
+                Success = false,
+
+                Message =
+                    "Kitap stokta bulunmuyor."
+            };
+        }
 
         await _realtimeNotifier
             .NotifyBooksChangedAsync();
@@ -103,14 +160,16 @@ public class BorrowService : IBorrowService
         return new OperationResultDto
         {
             Success = true,
+
             Message =
                 "Kitap başarıyla ödünç alındı."
         };
     }
 
-    public async Task<OperationResultDto> ReturnAsync(
-        string userId,
-        int bookId)
+    public async Task<OperationResultDto>
+        ReturnAsync(
+            string userId,
+            int bookId)
     {
         var activeBorrow =
             await _borrowRepository
@@ -123,6 +182,7 @@ public class BorrowService : IBorrowService
             return new OperationResultDto
             {
                 Success = false,
+
                 Message =
                     "İade edilecek aktif ödünç kaydı bulunamadı."
             };
@@ -138,20 +198,46 @@ public class BorrowService : IBorrowService
             return new OperationResultDto
             {
                 Success = false,
+
                 Message =
                     "Kitap bulunamadı."
             };
         }
 
-        activeBorrow.IsReturned = true;
+        var writeStatus =
+            await _borrowRepository
+                .ReturnBookAsync(
+                    userId,
+                    bookId,
+                    DateTime.UtcNow);
 
-        activeBorrow.ReturnDate =
-            DateTime.UtcNow;
+        if (
+            writeStatus ==
+            ReturnWriteStatus
+                .ActiveBorrowNotFound)
+        {
+            return new OperationResultDto
+            {
+                Success = false,
 
-        book.Stock++;
+                Message =
+                    "İade edilecek aktif ödünç kaydı bulunamadı."
+            };
+        }
 
-        await _borrowRepository
-            .SaveChangesAsync();
+        if (
+            writeStatus ==
+            ReturnWriteStatus
+                .BookNotFound)
+        {
+            return new OperationResultDto
+            {
+                Success = false,
+
+                Message =
+                    "Kitap bulunamadı."
+            };
+        }
 
         await _realtimeNotifier
             .NotifyBooksChangedAsync();
@@ -162,6 +248,7 @@ public class BorrowService : IBorrowService
         return new OperationResultDto
         {
             Success = true,
+
             Message =
                 "Kitap başarıyla iade edildi."
         };

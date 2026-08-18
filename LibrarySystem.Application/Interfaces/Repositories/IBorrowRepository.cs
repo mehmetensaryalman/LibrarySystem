@@ -1,10 +1,12 @@
-﻿using LibrarySystem.Domain.Entities;
+﻿using LibrarySystem.Application.Common.Models;
+using LibrarySystem.Domain.Entities;
 
 namespace LibrarySystem.Application.Interfaces.Repositories;
 
 public interface IBorrowRepository
 {
-    Task<Book?> GetBookByIdAsync(int bookId);
+    Task<Book?> GetBookByIdAsync(
+        int bookId);
 
     Task<BorrowRecord?> GetActiveBorrowAsync(
         string userId,
@@ -15,11 +17,17 @@ public interface IBorrowRepository
 
     Task<List<BorrowRecord>> GetAllBorrowsAsync();
 
-    Task<Dictionary<string, string>> GetUserEmailsAsync(
-        IEnumerable<string> userIds);
+    Task<Dictionary<string, string>>
+        GetUserEmailsAsync(
+            IEnumerable<string> userIds);
 
-    Task AddBorrowAsync(
-        BorrowRecord borrowRecord);
+    Task<BorrowWriteStatus>
+        BorrowBookAsync(
+            BorrowRecord borrowRecord);
 
-    Task SaveChangesAsync();
+    Task<ReturnWriteStatus>
+        ReturnBookAsync(
+            string userId,
+            int bookId,
+            DateTime returnDate);
 }

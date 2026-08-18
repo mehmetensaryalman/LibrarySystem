@@ -5,7 +5,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LibrarySystem.Infrastructure.Persistence;
 
-public class LibraryDbContext : IdentityDbContext<ApplicationUser>
+public class LibraryDbContext :
+    IdentityDbContext<ApplicationUser>
 {
     public LibraryDbContext(
         DbContextOptions<LibraryDbContext> options)
@@ -13,7 +14,8 @@ public class LibraryDbContext : IdentityDbContext<ApplicationUser>
     {
     }
 
-    public DbSet<Book> Books => Set<Book>();
+    public DbSet<Book> Books =>
+        Set<Book>();
 
     public DbSet<BorrowRecord> BorrowRecords =>
         Set<BorrowRecord>();
@@ -27,20 +29,25 @@ public class LibraryDbContext : IdentityDbContext<ApplicationUser>
         {
             entity.ToTable("Books");
 
-            entity.HasKey(x => x.Id);
+            entity.HasKey(x =>
+                x.Id);
 
-            entity.Property(x => x.Name)
+            entity.Property(x =>
+                    x.Name)
                 .IsRequired()
                 .HasMaxLength(200);
 
-            entity.Property(x => x.Author)
+            entity.Property(x =>
+                    x.Author)
                 .IsRequired()
                 .HasMaxLength(150);
 
-            entity.Property(x => x.Stock)
+            entity.Property(x =>
+                    x.Stock)
                 .IsRequired();
 
-            entity.Property(x => x.IsArchived)
+            entity.Property(x =>
+                    x.IsArchived)
                 .IsRequired()
                 .HasDefaultValue(false);
 
@@ -54,37 +61,62 @@ public class LibraryDbContext : IdentityDbContext<ApplicationUser>
                     "UX_Books_Name_Author");
         });
 
-        builder.Entity<BorrowRecord>(entity =>
-        {
-            entity.ToTable("BorrowRecords");
+        builder.Entity<BorrowRecord>(
+            entity =>
+            {
+                entity.ToTable(
+                    "BorrowRecords");
 
-            entity.HasKey(x => x.Id);
+                entity.HasKey(x =>
+                    x.Id);
 
-            entity.Property(x => x.UserId)
-                .IsRequired()
-                .HasMaxLength(450);
+                entity.Property(x =>
+                        x.UserId)
+                    .IsRequired()
+                    .HasMaxLength(450);
 
-            entity.Property(x => x.BorrowDate)
-                .IsRequired();
+                entity.Property(x =>
+                        x.BorrowDate)
+                    .IsRequired();
 
-            entity.Property(x => x.DueDate)
-                .IsRequired();
+                entity.Property(x =>
+                        x.DueDate)
+                    .IsRequired();
 
-            entity.Property(x => x.ReturnDate)
-                .IsRequired(false);
+                entity.Property(x =>
+                        x.ReturnDate)
+                    .IsRequired(false);
 
-            entity.Property(x => x.IsReturned)
-                .IsRequired();
+                entity.Property(x =>
+                        x.IsReturned)
+                    .IsRequired();
 
-            entity.HasOne(x => x.Book)
-                .WithMany(x => x.BorrowRecords)
-                .HasForeignKey(x => x.BookId)
-                .OnDelete(DeleteBehavior.Restrict);
+                entity.HasIndex(x => new
+                {
+                    x.UserId,
+                    x.BookId
+                })
+                    .IsUnique()
+                    .HasFilter(
+                        "[IsReturned] = 0")
+                    .HasDatabaseName(
+                        "UX_BorrowRecords_UserId_BookId_Active");
 
-            entity.HasOne<ApplicationUser>()
-                .WithMany()
-                .HasForeignKey(x => x.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
+                entity.HasOne(x =>
+                        x.Book)
+                    .WithMany(x =>
+                        x.BorrowRecords)
+                    .HasForeignKey(x =>
+                        x.BookId)
+                    .OnDelete(
+                        DeleteBehavior.Restrict);
+
+                entity.HasOne<ApplicationUser>()
+                    .WithMany()
+                    .HasForeignKey(x =>
+                        x.UserId)
+                    .OnDelete(
+                        DeleteBehavior.Restrict);
+            });
     }
 }
