@@ -254,6 +254,76 @@ public class BorrowService :
         };
     }
 
+    public async Task<OperationResultDto>
+        ReturnForAdminAsync(
+            int borrowRecordId)
+    {
+        var activeBorrow =
+            await _borrowRepository
+                .GetActiveBorrowByIdAsync(
+                    borrowRecordId);
+
+        if (activeBorrow is null)
+        {
+            return new OperationResultDto
+            {
+                Success = false,
+
+                Message =
+                    "İade edilecek aktif ödünç kaydı bulunamadı."
+            };
+        }
+
+        var writeStatus =
+            await _borrowRepository
+                .ReturnBookAsync(
+                    activeBorrow.UserId,
+                    activeBorrow.BookId,
+                    DateTime.UtcNow);
+
+        if (
+            writeStatus ==
+            ReturnWriteStatus
+                .ActiveBorrowNotFound)
+        {
+            return new OperationResultDto
+            {
+                Success = false,
+
+                Message =
+                    "İade edilecek aktif ödünç kaydı bulunamadı."
+            };
+        }
+
+        if (
+            writeStatus ==
+            ReturnWriteStatus
+                .BookNotFound)
+        {
+            return new OperationResultDto
+            {
+                Success = false,
+
+                Message =
+                    "Kitap bulunamadı."
+            };
+        }
+
+        await _realtimeNotifier
+            .NotifyBooksChangedAsync();
+
+        await _realtimeNotifier
+            .NotifyBorrowsChangedAsync();
+
+        return new OperationResultDto
+        {
+            Success = true,
+
+            Message =
+                "Kitap başarıyla iade alındı."
+        };
+    }
+
     public async Task<
         List<BorrowedBookResponseDto>>
         GetMyBooksAsync(

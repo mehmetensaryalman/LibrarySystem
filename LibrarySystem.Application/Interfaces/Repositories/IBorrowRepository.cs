@@ -12,6 +12,9 @@ public interface IBorrowRepository
         string userId,
         int bookId);
 
+    Task<BorrowRecord?> GetActiveBorrowByIdAsync(
+        int borrowRecordId);
+
     Task<List<BorrowRecord>> GetUserBorrowsAsync(
         string userId);
 

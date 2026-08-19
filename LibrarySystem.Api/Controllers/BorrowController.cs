@@ -11,34 +11,42 @@ namespace LibrarySystem.Api.Controllers;
 [Authorize]
 public class BorrowController : ControllerBase
 {
-    private readonly IBorrowService _borrowService;
+    private readonly
+        IBorrowService _borrowService;
 
     public BorrowController(
         IBorrowService borrowService)
     {
-        _borrowService = borrowService;
+        _borrowService =
+            borrowService;
     }
 
     [HttpPost("borrow/{bookId:int}")]
     [Authorize(Policy = "BorrowerOnly")]
-    public async Task<IActionResult> Borrow(
-        int bookId)
+    public async Task<IActionResult>
+        Borrow(
+            int bookId)
     {
-        var userId = GetUserId();
+        var userId =
+            GetUserId();
 
-        if (string.IsNullOrWhiteSpace(userId))
+        if (
+            string.IsNullOrWhiteSpace(
+                userId))
         {
             return Unauthorized();
         }
 
         var result =
-            await _borrowService.BorrowAsync(
-                userId,
-                bookId);
+            await _borrowService
+                .BorrowAsync(
+                    userId,
+                    bookId);
 
         if (!result.Success)
         {
-            return BadRequest(result);
+            return BadRequest(
+                result);
         }
 
         return Ok(result);
@@ -46,24 +54,30 @@ public class BorrowController : ControllerBase
 
     [HttpPost("return/{bookId:int}")]
     [Authorize(Policy = "BorrowerOnly")]
-    public async Task<IActionResult> Return(
-        int bookId)
+    public async Task<IActionResult>
+        Return(
+            int bookId)
     {
-        var userId = GetUserId();
+        var userId =
+            GetUserId();
 
-        if (string.IsNullOrWhiteSpace(userId))
+        if (
+            string.IsNullOrWhiteSpace(
+                userId))
         {
             return Unauthorized();
         }
 
         var result =
-            await _borrowService.ReturnAsync(
-                userId,
-                bookId);
+            await _borrowService
+                .ReturnAsync(
+                    userId,
+                    bookId);
 
         if (!result.Success)
         {
-            return BadRequest(result);
+            return BadRequest(
+                result);
         }
 
         return Ok(result);
@@ -74,22 +88,27 @@ public class BorrowController : ControllerBase
     public async Task<IActionResult>
         GetMyBooks()
     {
-        var userId = GetUserId();
+        var userId =
+            GetUserId();
 
-        if (string.IsNullOrWhiteSpace(userId))
+        if (
+            string.IsNullOrWhiteSpace(
+                userId))
         {
             return Unauthorized();
         }
 
         var books =
             await _borrowService
-                .GetMyBooksAsync(userId);
+                .GetMyBooksAsync(
+                    userId);
 
         return Ok(books);
     }
 
     [HttpGet("admin/borrows")]
-    [Authorize(Roles = RoleNames.Admin)]
+    [Authorize(
+        Roles = RoleNames.Admin)]
     public async Task<IActionResult>
         GetAllBorrowsForAdmin()
     {
@@ -98,6 +117,28 @@ public class BorrowController : ControllerBase
                 .GetAllBorrowsForAdminAsync();
 
         return Ok(borrows);
+    }
+
+    [HttpPost(
+        "admin/borrows/{borrowRecordId:int}/return")]
+    [Authorize(
+        Roles = RoleNames.Admin)]
+    public async Task<IActionResult>
+        ReturnForAdmin(
+            int borrowRecordId)
+    {
+        var result =
+            await _borrowService
+                .ReturnForAdminAsync(
+                    borrowRecordId);
+
+        if (!result.Success)
+        {
+            return BadRequest(
+                result);
+        }
+
+        return Ok(result);
     }
 
     private string? GetUserId()

@@ -47,6 +47,19 @@ public class BorrowRepository :
                 !record.IsReturned);
     }
 
+    public async Task<BorrowRecord?>
+        GetActiveBorrowByIdAsync(
+            int borrowRecordId)
+    {
+        return await _dbContext
+            .BorrowRecords
+            .AsNoTracking()
+            .FirstOrDefaultAsync(record =>
+                record.Id ==
+                    borrowRecordId &&
+                !record.IsReturned);
+    }
+
     public async Task<List<BorrowRecord>>
         GetUserBorrowsAsync(
             string userId)

@@ -1,4 +1,6 @@
-import { DatePipe } from '@angular/common';
+import {
+  DatePipe
+} from '@angular/common';
 
 import {
   Component,
@@ -8,16 +10,34 @@ import {
   signal
 } from '@angular/core';
 
-import { Router } from '@angular/router';
+import {
+  Router
+} from '@angular/router';
 
 import {
   finalize,
   Subscription
 } from 'rxjs';
 
-import { ButtonModule } from 'primeng/button';
-import { TableModule } from 'primeng/table';
-import { TabsModule } from 'primeng/tabs';
+import {
+  ConfirmationService
+} from 'primeng/api';
+
+import {
+  ButtonModule
+} from 'primeng/button';
+
+import {
+  ConfirmDialogModule
+} from 'primeng/confirmdialog';
+
+import {
+  TableModule
+} from 'primeng/table';
+
+import {
+  TabsModule
+} from 'primeng/tabs';
 
 import {
   AdminBorrow
@@ -41,8 +61,13 @@ import {
   imports: [
     DatePipe,
     ButtonModule,
+    ConfirmDialogModule,
     TableModule,
     TabsModule
+  ],
+
+  providers: [
+    ConfirmationService
   ],
 
   templateUrl:
@@ -59,22 +84,35 @@ export class BorrowManagementComponent
 
   activeBorrows = computed(() =>
     this.borrows().filter(
-      borrow => !borrow.isReturned
+      borrow =>
+        !borrow.isReturned
     )
   );
 
   returnedBorrows = computed(() =>
     this.borrows().filter(
-      borrow => borrow.isReturned
+      borrow =>
+        borrow.isReturned
     )
   );
 
   loading = signal(false);
 
-  errorMessage = signal('');
+  returningBorrowRecordId =
+    signal<number | null>(null);
+
+  errorMessage =
+    signal('');
+
+  successMessage =
+    signal('');
 
   private borrowsChangedSubscription:
     Subscription | null = null;
+
+  private successMessageTimeout:
+    ReturnType<typeof setTimeout> |
+    null = null;
 
   constructor(
     private readonly borrowService:
@@ -87,7 +125,10 @@ export class BorrowManagementComponent
       SignalRService,
 
     private readonly router:
-      Router
+      Router,
+
+    private readonly confirmationService:
+      ConfirmationService
   ) {
   }
 
@@ -108,6 +149,15 @@ export class BorrowManagementComponent
   ngOnDestroy(): void {
     this.borrowsChangedSubscription
       ?.unsubscribe();
+
+    if (
+      this.successMessageTimeout !==
+      null
+    ) {
+      clearTimeout(
+        this.successMessageTimeout
+      );
+    }
   }
 
   loadBorrows(): void {
@@ -123,20 +173,106 @@ export class BorrowManagementComponent
       )
       .subscribe({
         next: borrows => {
-          this.borrows.set(borrows);
+          this.borrows.set(
+            borrows
+          );
         },
 
         error: error => {
-          if (error.status === 403) {
+          if (
+            error.status === 403
+          ) {
             this.errorMessage.set(
               'Bu sayfayı görüntülemek için Admin yetkisi gereklidir.'
             );
+
             return;
           }
 
           this.errorMessage.set(
             error.error?.message ??
             'Ödünç kayıtları yüklenirken bir hata oluştu.'
+          );
+        }
+      });
+  }
+
+  confirmReturnBorrow(
+    borrow: AdminBorrow
+  ): void {
+    this.errorMessage.set('');
+
+    this.confirmationService
+      .confirm({
+        header:
+          'Kitabı İade Al',
+
+        message:
+          `"${borrow.bookName}" kitabının ${borrow.userEmail} kullanıcısından teslim alındığını onaylıyor musunuz?`,
+
+        acceptLabel:
+          'İade Al',
+
+        rejectLabel:
+          'Vazgeç',
+
+        accept: () => {
+          this.returnBorrowForAdmin(
+            borrow
+          );
+        }
+      });
+  }
+
+  private returnBorrowForAdmin(
+    borrow: AdminBorrow
+  ): void {
+    this.errorMessage.set('');
+
+    this.returningBorrowRecordId
+      .set(
+        borrow.borrowRecordId
+      );
+
+    this.borrowService
+      .returnBorrowForAdmin(
+        borrow.borrowRecordId
+      )
+      .pipe(
+        finalize(() => {
+          this.returningBorrowRecordId
+            .set(null);
+        })
+      )
+      .subscribe({
+        next: result => {
+          if (!result.success) {
+            this.errorMessage.set(
+              result.message
+            );
+
+            return;
+          }
+
+          this.showSuccessMessage(
+            result.message
+          );
+        },
+
+        error: error => {
+          if (
+            error.status === 403
+          ) {
+            this.errorMessage.set(
+              'Bu işlem için Admin yetkisi gereklidir.'
+            );
+
+            return;
+          }
+
+          this.errorMessage.set(
+            error.error?.message ??
+            'Kitap iade alınırken bir hata oluştu.'
           );
         }
       });
@@ -153,7 +289,9 @@ export class BorrowManagementComponent
       new Date();
 
     const dueDate =
-      new Date(borrow.dueDate);
+      new Date(
+        borrow.dueDate
+      );
 
     const difference =
       dueDate.getTime() -
@@ -165,7 +303,9 @@ export class BorrowManagementComponent
     if (difference < 0) {
       const overdueDays =
         Math.ceil(
-          Math.abs(difference) /
+          Math.abs(
+            difference
+          ) /
           millisecondsPerDay
         );
 
@@ -189,10 +329,14 @@ export class BorrowManagementComponent
     }
 
     const dueDate =
-      new Date(borrow.dueDate);
+      new Date(
+        borrow.dueDate
+      );
 
     const returnDate =
-      new Date(borrow.returnDate);
+      new Date(
+        borrow.returnDate
+      );
 
     if (
       returnDate.getTime() <=
@@ -215,6 +359,31 @@ export class BorrowManagementComponent
       );
 
     return `${delayedDays} gün gecikmeli`;
+  }
+
+  private showSuccessMessage(
+    message: string
+  ): void {
+    if (
+      this.successMessageTimeout !==
+      null
+    ) {
+      clearTimeout(
+        this.successMessageTimeout
+      );
+    }
+
+    this.successMessage.set(
+      message
+    );
+
+    this.successMessageTimeout =
+      setTimeout(() => {
+        this.successMessage.set('');
+
+        this.successMessageTimeout =
+          null;
+      }, 3600);
   }
 
   goToAdminPanel(): void {

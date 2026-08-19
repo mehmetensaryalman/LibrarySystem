@@ -1,5 +1,8 @@
 <div class="page">
 
+  <p-confirmdialog>
+  </p-confirmdialog>
+
   <header class="page-header">
 
     <div>
@@ -9,23 +12,23 @@
 
     <div class="header-actions">
 
-    <p-button
+      <p-button
         label="Admin Yönetim Paneli"
         styleClass="app-primary-button"
         (onClick)="goToAdminPanel()"
-    ></p-button>
+      ></p-button>
 
-    <p-button
+      <p-button
         label="Kitap Listesi"
         styleClass="app-primary-button"
         (onClick)="goToBooks()"
-    ></p-button>
+      ></p-button>
 
-    <p-button
+      <p-button
         label="Çıkış Yap"
         styleClass="app-logout-button"
         (onClick)="logout()"
-    ></p-button>
+      ></p-button>
 
     </div>
 
@@ -35,6 +38,13 @@
   @if (errorMessage()) {
     <div class="error-message">
       {{ errorMessage() }}
+    </div>
+  }
+
+
+  @if (successMessage()) {
+    <div class="success-message">
+      {{ successMessage() }}
     </div>
   }
 
@@ -75,7 +85,7 @@
             [scrollable]="true"
             [tableStyle]="{
               'width': '100%',
-              'min-width': '85rem'
+              'min-width': '90rem'
             }"
           >
 
@@ -88,6 +98,7 @@
                 <th>Son İade Tarihi</th>
                 <th>Durum</th>
                 <th>Kalan Süre</th>
+                <th>İşlem</th>
               </tr>
             </ng-template>
 
@@ -134,13 +145,31 @@
                   }}
                 </td>
 
+                <td>
+                  <p-button
+                    label="İade Al"
+                    styleClass="app-primary-button"
+                    [loading]="
+                      returningBorrowRecordId() ===
+                      borrow.borrowRecordId
+                    "
+                    [disabled]="
+                      returningBorrowRecordId() !==
+                      null
+                    "
+                    (onClick)="
+                      confirmReturnBorrow(borrow)
+                    "
+                  ></p-button>
+                </td>
+
               </tr>
             </ng-template>
 
 
             <ng-template #emptymessage>
               <tr>
-                <td colspan="7">
+                <td colspan="8">
                   Sistemde şu anda aktif olarak
                   ödünç alınmış bir kitap bulunmuyor.
                 </td>
