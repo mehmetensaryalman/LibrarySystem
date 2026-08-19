@@ -195,6 +195,10 @@ export class BookListComponent
     ReturnType<typeof setTimeout> |
     null = null;
 
+  private successMessageRestartTimeout:
+    ReturnType<typeof setTimeout> |
+    null = null;
+
   private readonly authorNamePattern =
     /^(?=.*\p{L})[\p{L}\p{M}.'’\- ]+$/u;
 
@@ -262,6 +266,15 @@ export class BookListComponent
     ) {
       clearTimeout(
         this.successMessageTimeout
+      );
+    }
+
+    if (
+      this.successMessageRestartTimeout !==
+      null
+    ) {
+      clearTimeout(
+        this.successMessageRestartTimeout
       );
     }
   }
@@ -928,7 +941,7 @@ export class BookListComponent
             .set(
               error.error?.message ??
               'Kitap eklenirken bir hata oluştu.'
-          );
+            );
         }
       });
   }
@@ -1076,19 +1089,54 @@ export class BookListComponent
       clearTimeout(
         this.successMessageTimeout
       );
+
+      this.successMessageTimeout =
+        null;
     }
 
-    this.successMessage.set(
-      message
-    );
+    if (
+      this.successMessageRestartTimeout !==
+      null
+    ) {
+      clearTimeout(
+        this.successMessageRestartTimeout
+      );
 
-    this.successMessageTimeout =
+      this.successMessageRestartTimeout =
+        null;
+    }
+
+    /*
+     * Mevcut mesajı önce DOM'dan kaldırıyoruz.
+     *
+     * Bunun iki sebebi var:
+     * 1. Eski mesajın timeout süresini tamamen sıfırlamak.
+     * 2. .success-message CSS fade animasyonunun
+     *    yeni mesaj için baştan başlamasını sağlamak.
+     */
+    this.successMessage.set('');
+
+    this.successMessageRestartTimeout =
       setTimeout(() => {
-        this.successMessage.set('');
+        this.successMessage.set(
+          message
+        );
 
-        this.successMessageTimeout =
+        this.successMessageRestartTimeout =
           null;
-      }, 3600);
+
+        /*
+         * Her yeni mesaj kendi 3 saniye görünme
+         * + 0.6 saniye fade süresini alır.
+         */
+        this.successMessageTimeout =
+          setTimeout(() => {
+            this.successMessage.set('');
+
+            this.successMessageTimeout =
+              null;
+          }, 3600);
+      }, 0);
   }
 
   goToAdminPanel(): void {
