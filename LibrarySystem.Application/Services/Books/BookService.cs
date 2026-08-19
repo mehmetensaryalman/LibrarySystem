@@ -207,12 +207,13 @@ public class BookService : IBookService
                 {
                     Id = book.Id,
                     Name = book.Name,
-                    Author =
-                        book.Author,
-                    Stock =
-                        book.Stock,
+                    Author = book.Author,
+                    Stock = book.Stock,
                     IsArchived =
-                        book.IsArchived
+                        book.IsArchived,
+                    ArchivedAt =
+                        AsUtc(
+                            book.ArchivedAt)
                 })
             .ToList();
     }
@@ -244,7 +245,10 @@ public class BookService : IBookService
             Name = book.Name,
             Author = book.Author,
             Stock = book.Stock,
-            IsArchived = book.IsArchived
+            IsArchived = book.IsArchived,
+            ArchivedAt =
+                AsUtc(
+                    book.ArchivedAt)
         };
     }
 
@@ -321,5 +325,18 @@ public class BookService : IBookService
             Message =
                 "Kitap başarıyla silindi."
         };
+    }
+
+    private static DateTime? AsUtc(
+        DateTime? dateTime)
+    {
+        if (!dateTime.HasValue)
+        {
+            return null;
+        }
+
+        return DateTime.SpecifyKind(
+            dateTime.Value,
+            DateTimeKind.Utc);
     }
 }

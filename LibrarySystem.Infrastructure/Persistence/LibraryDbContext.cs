@@ -51,6 +51,10 @@ public class LibraryDbContext :
                 .IsRequired()
                 .HasDefaultValue(false);
 
+            entity.Property(x =>
+                    x.ArchivedAt)
+                .IsRequired(false);
+
             entity.HasIndex(x => new
             {
                 x.Name,

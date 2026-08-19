@@ -5,15 +5,22 @@ import {
   signal
 } from '@angular/core';
 
-import { Router } from '@angular/router';
+import {
+  Router
+} from '@angular/router';
 
 import {
   finalize,
   Subscription
 } from 'rxjs';
 
-import { ButtonModule } from 'primeng/button';
-import { TableModule } from 'primeng/table';
+import {
+  ButtonModule
+} from 'primeng/button';
+
+import {
+  TableModule
+} from 'primeng/table';
 
 import {
   ArchivedBook
@@ -63,7 +70,8 @@ export class ArchivedBooksComponent
     Subscription | null = null;
 
   private successMessageTimeout:
-    ReturnType<typeof setTimeout> | null = null;
+    ReturnType<typeof setTimeout> |
+    null = null;
 
   constructor(
     private readonly bookService:
@@ -98,7 +106,10 @@ export class ArchivedBooksComponent
     this.booksChangedSubscription
       ?.unsubscribe();
 
-    if (this.successMessageTimeout !== null) {
+    if (
+      this.successMessageTimeout !==
+      null
+    ) {
       clearTimeout(
         this.successMessageTimeout
       );
@@ -124,10 +135,13 @@ export class ArchivedBooksComponent
         },
 
         error: error => {
-          if (error.status === 403) {
+          if (
+            error.status === 403
+          ) {
             this.errorMessage.set(
               'Bu sayfayı görüntülemek için Admin yetkisi gereklidir.'
             );
+
             return;
           }
 
@@ -165,18 +179,24 @@ export class ArchivedBooksComponent
         },
 
         error: error => {
-          if (error.status === 403) {
+          if (
+            error.status === 403
+          ) {
             this.errorMessage.set(
               'Bu işlem için Admin yetkisi gereklidir.'
             );
+
             return;
           }
 
-          if (error.status === 404) {
+          if (
+            error.status === 404
+          ) {
             this.errorMessage.set(
               error.error?.message ??
               'Arşivlenmiş kitap bulunamadı.'
             );
+
             return;
           }
 
@@ -188,10 +208,34 @@ export class ArchivedBooksComponent
       });
   }
 
+  formatArchivedAt(
+    archivedAt: string | null
+  ): string {
+    if (!archivedAt) {
+      return '-';
+    }
+
+    return new Intl.DateTimeFormat(
+      'tr-TR',
+      {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }
+    ).format(
+      new Date(archivedAt)
+    );
+  }
+
   private showSuccessMessage(
     message: string
   ): void {
-    if (this.successMessageTimeout !== null) {
+    if (
+      this.successMessageTimeout !==
+      null
+    ) {
       clearTimeout(
         this.successMessageTimeout
       );

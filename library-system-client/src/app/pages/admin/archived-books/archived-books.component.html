@@ -9,23 +9,23 @@
 
     <div class="header-actions">
 
-    <p-button
+      <p-button
         label="Admin Yönetim Paneli"
         styleClass="app-primary-button"
         (onClick)="goToAdminPanel()"
-    ></p-button>
+      ></p-button>
 
-    <p-button
+      <p-button
         label="Kitap Listesi"
         styleClass="app-primary-button"
         (onClick)="goToBooks()"
-    ></p-button>
+      ></p-button>
 
-    <p-button
+      <p-button
         label="Çıkış Yap"
         styleClass="app-logout-button"
         (onClick)="logout()"
-    ></p-button>
+      ></p-button>
 
     </div>
 
@@ -74,7 +74,7 @@
       [scrollable]="true"
       [tableStyle]="{
         'width': '100%',
-        'min-width': '65rem'
+        'min-width': '72rem'
       }"
     >
 
@@ -84,6 +84,7 @@
           <th>Kitap</th>
           <th>Yazar</th>
           <th>Stok</th>
+          <th>Arşiv Tarihi</th>
           <th>Durum</th>
           <th>İşlem</th>
         </tr>
@@ -113,17 +114,26 @@
           </td>
 
           <td>
+            {{
+              formatArchivedAt(
+                book.archivedAt
+              )
+            }}
+          </td>
+
+          <td>
             Arşivlendi
           </td>
 
           <td>
             <p-button
-                label="Arşivden Geri Al"
-                styleClass="app-primary-button"
-                [loading]="
-                    restoringBookId() === book.id
-                "
-                (onClick)="restoreBook(book)"
+              label="Arşivden Geri Al"
+              styleClass="app-primary-button"
+              [loading]="
+                restoringBookId() ===
+                book.id
+              "
+              (onClick)="restoreBook(book)"
             ></p-button>
           </td>
 
@@ -133,7 +143,7 @@
 
       <ng-template #emptymessage>
         <tr>
-          <td colspan="6">
+          <td colspan="7">
             Arşivlenmiş kitap bulunmuyor.
           </td>
         </tr>

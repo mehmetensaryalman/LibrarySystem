@@ -27,6 +27,7 @@ export interface ArchivedBook {
   author: string;
   stock: number;
   isArchived: boolean;
+  archivedAt: string | null;
 }
 
 export interface RestoreBookResponse {

@@ -14,6 +14,8 @@ public class Book
 
     public bool IsArchived { get; set; }
 
+    public DateTime? ArchivedAt { get; set; }
+
     public ICollection<BorrowRecord> BorrowRecords
     {
         get;

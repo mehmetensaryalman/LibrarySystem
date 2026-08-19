@@ -115,7 +115,9 @@ public class BookRepository : IBookRepository
             .AsNoTracking()
             .Where(book =>
                 book.IsArchived)
-            .OrderBy(book =>
+            .OrderByDescending(book =>
+                book.ArchivedAt)
+            .ThenBy(book =>
                 book.Name)
             .ThenBy(book =>
                 book.Author)
@@ -257,6 +259,9 @@ public class BookRepository : IBookRepository
     {
         book.IsArchived = true;
 
+        book.ArchivedAt =
+            DateTime.UtcNow;
+
         await _dbContext
             .SaveChangesAsync();
     }
@@ -266,6 +271,8 @@ public class BookRepository : IBookRepository
             Book book)
     {
         book.IsArchived = false;
+
+        book.ArchivedAt = null;
 
         await _dbContext
             .SaveChangesAsync();
