@@ -1,4 +1,6 @@
-import { Injectable } from '@angular/core';
+import {
+  Injectable
+} from '@angular/core';
 
 import {
   HubConnection,
@@ -11,6 +13,10 @@ import {
   Observable,
   Subject
 } from 'rxjs';
+
+import {
+  AdminBorrowNotification
+} from '../models/borrow.models';
 
 import {
   AuthService
@@ -29,6 +35,9 @@ export class SignalRService {
   private readonly borrowsChangedSubject =
     new Subject<void>();
 
+ private readonly adminBorrowNotificationSubject =
+  new Subject<AdminBorrowNotification>();
+
   readonly booksChanged$: Observable<void> =
     this.booksChangedSubject
       .asObservable();
@@ -36,6 +45,11 @@ export class SignalRService {
   readonly borrowsChanged$: Observable<void> =
     this.borrowsChangedSubject
       .asObservable();
+
+  readonly adminBorrowNotification$:
+    Observable<AdminBorrowNotification> =
+      this.adminBorrowNotificationSubject
+        .asObservable();
 
   private readonly hubConnection:
     HubConnection;
@@ -155,6 +169,24 @@ export class SignalRService {
           .next();
       }
     );
+
+    this.hubConnection.on(
+      'AdminBorrowNotification',
+      (
+        notification:
+          AdminBorrowNotification
+      ) => {
+        console.log(
+          'SignalR: AdminBorrowNotification alındı.',
+          notification
+        );
+
+        this.adminBorrowNotificationSubject
+          .next(
+            notification
+          );
+      }
+    );
   }
 
   private registerConnectionEvents():
@@ -168,6 +200,7 @@ export class SignalRService {
               'SignalR bağlantısı yeniden kuruluyor:',
               error
             );
+
             return;
           }
 
@@ -195,6 +228,7 @@ export class SignalRService {
               'SignalR bağlantısı hata nedeniyle kapandı:',
               error
             );
+
             return;
           }
 

@@ -5,12 +5,15 @@ export interface OperationResult {
 
 export interface BorrowedBook {
   borrowRecordId: number;
+
   bookId: number;
   bookName: string;
   author: string;
+
   borrowDate: string;
   dueDate: string;
   returnDate: string | null;
+
   isReturned: boolean;
 }
 
@@ -29,4 +32,11 @@ export interface AdminBorrow {
   returnDate: string | null;
 
   isReturned: boolean;
+}
+
+export interface AdminBorrowNotification {
+  bookId: number;
+  bookName: string;
+  userEmail: string;
+  borrowDate: string;
 }

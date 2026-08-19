@@ -1,4 +1,5 @@
 ﻿using LibrarySystem.Api.Hubs;
+using LibrarySystem.Application.DTOs.Borrow;
 using LibrarySystem.Application.Interfaces.Realtime;
 using Microsoft.AspNetCore.SignalR;
 
@@ -17,7 +18,8 @@ public class SignalRRealtimeNotifier
             LibraryHub,
             ILibraryClient> hubContext)
     {
-        _hubContext = hubContext;
+        _hubContext =
+            hubContext;
     }
 
     public async Task
@@ -36,5 +38,17 @@ public class SignalRRealtimeNotifier
             .Clients
             .All
             .BorrowsChanged();
+    }
+
+    public async Task
+        NotifyAdminBorrowNotificationAsync(
+            AdminBorrowNotificationDto notification)
+    {
+        await _hubContext
+            .Clients
+            .Group(
+                LibraryHub.AdminGroupName)
+            .AdminBorrowNotification(
+                notification);
     }
 }

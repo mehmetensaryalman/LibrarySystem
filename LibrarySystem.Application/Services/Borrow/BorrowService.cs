@@ -79,6 +79,21 @@ public class BorrowService :
             };
         }
 
+        var userEmails =
+            await _borrowRepository
+                .GetUserEmailsAsync(
+                    new[]
+                    {
+                        userId
+                    });
+
+        var userEmail =
+            userEmails.TryGetValue(
+                userId,
+                out var email)
+                ? email
+                : "Bilinmiyor";
+
         var borrowDate =
             DateTime.UtcNow;
 
@@ -156,6 +171,23 @@ public class BorrowService :
 
         await _realtimeNotifier
             .NotifyBorrowsChangedAsync();
+
+        await _realtimeNotifier
+            .NotifyAdminBorrowNotificationAsync(
+                new AdminBorrowNotificationDto
+                {
+                    BookId =
+                        book.Id,
+
+                    BookName =
+                        book.Name,
+
+                    UserEmail =
+                        userEmail,
+
+                    BorrowDate =
+                        borrowDate
+                });
 
         return new OperationResultDto
         {

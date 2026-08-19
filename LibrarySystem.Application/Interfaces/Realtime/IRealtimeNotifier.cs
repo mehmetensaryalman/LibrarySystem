@@ -1,8 +1,13 @@
-﻿namespace LibrarySystem.Application.Interfaces.Realtime;
+﻿using LibrarySystem.Application.DTOs.Borrow;
+
+namespace LibrarySystem.Application.Interfaces.Realtime;
 
 public interface IRealtimeNotifier
 {
     Task NotifyBooksChangedAsync();
 
     Task NotifyBorrowsChangedAsync();
+
+    Task NotifyAdminBorrowNotificationAsync(
+        AdminBorrowNotificationDto notification);
 }
