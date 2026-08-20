@@ -15,6 +15,9 @@ public interface IBorrowRepository
     Task<BorrowRecord?> GetActiveBorrowByIdAsync(
         int borrowRecordId);
 
+    Task<int> GetActiveBorrowCountAsync(
+        string userId);
+
     Task<bool> HasOverdueActiveBorrowAsync(
         string userId,
         DateTime currentDate);

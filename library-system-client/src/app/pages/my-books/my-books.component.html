@@ -1,5 +1,7 @@
 <div class="page">
+
   <header class="page-header">
+
     <div>
       <h1>Kütüphane Sistemi</h1>
       <p>Benim Kitaplarım</p>
@@ -20,7 +22,9 @@
       ></p-button>
 
     </div>
+
   </header>
+
 
   @if (errorMessage()) {
     <div class="error-message">
@@ -28,11 +32,84 @@
     </div>
   }
 
+
   @if (successMessage()) {
     <div class="success-message">
       {{ successMessage() }}
     </div>
   }
+
+
+  @if (hasBorrowRestriction()) {
+
+    <section class="restriction-card">
+
+      <div class="restriction-card-title">
+        Ödünç Alma Kısıtlaması
+      </div>
+
+
+      @if (
+        penaltyStatus()?.hasOverdueBorrow
+      ) {
+        <div class="restriction-section">
+
+          <strong>
+            Gecikmiş kitabınız bulunmaktadır.
+          </strong>
+
+          <p>
+            Yeni kitap ödünç alabilmek için
+            önce geciken kitabınızı iade
+            etmeniz gerekmektedir.
+          </p>
+
+          <p>
+            İade sonrasında gecikme süresine
+            göre ödünç alma cezası
+            uygulanacaktır.
+          </p>
+
+        </div>
+      }
+
+
+      @if (
+        penaltyStatus()?.hasActivePenalty
+      ) {
+        <div class="restriction-section">
+
+          <strong>
+            Aktif cezanız bulunmaktadır.
+          </strong>
+
+          @if (
+            penaltyStatus()?.penaltyEndDate;
+            as penaltyEndDate
+          ) {
+            <p>
+              Ceza bitiş zamanı:
+              <strong>
+                {{
+                  penaltyEndDate
+                    | date:'dd.MM.yyyy HH:mm'
+                }}
+              </strong>
+            </p>
+          }
+
+          <p>
+            Ceza süresi sona erene kadar
+            yeni kitap ödünç alamazsınız.
+          </p>
+
+        </div>
+      }
+
+    </section>
+
+  }
+
 
   <div class="tabs-card">
 
@@ -42,15 +119,15 @@
 
         <p-tab value="active">
           Aktif Ödünç Alınan Kitaplar
-          ({{ activeBorrowedBooks().length }})
+          ({{ activeBorrowedBooks().length }}/3)
         </p-tab>
-
         <p-tab value="history">
           Geçmiş İadeler
           ({{ returnedBooks().length }})
         </p-tab>
 
       </p-tablist>
+
 
       <p-tabpanels>
 
@@ -85,7 +162,11 @@
               </tr>
             </ng-template>
 
-            <ng-template #body let-book>
+
+            <ng-template
+              #body
+              let-book
+            >
               <tr>
 
                 <td>
@@ -115,7 +196,11 @@
                 </td>
 
                 <td>
-                  {{ getRemainingTime(book) }}
+                  {{
+                    getRemainingTime(
+                      book
+                    )
+                  }}
                 </td>
 
                 <td>
@@ -123,14 +208,18 @@
                     label="İade Et"
                     severity="secondary"
                     [loading]="
-                      returningBookId() === book.bookId
+                      returningBookId() ===
+                      book.bookId
                     "
-                    (onClick)="returnBook(book)"
+                    (onClick)="
+                      returnBook(book)
+                    "
                   ></p-button>
                 </td>
 
               </tr>
             </ng-template>
+
 
             <ng-template #emptymessage>
               <tr>
@@ -176,7 +265,11 @@
               </tr>
             </ng-template>
 
-            <ng-template #body let-book>
+
+            <ng-template
+              #body
+              let-book
+            >
               <tr>
 
                 <td>
@@ -210,11 +303,16 @@
                 </td>
 
                 <td>
-                  {{ getDeliveryStatus(book) }}
+                  {{
+                    getDeliveryStatus(
+                      book
+                    )
+                  }}
                 </td>
 
               </tr>
             </ng-template>
+
 
             <ng-template #emptymessage>
               <tr>
@@ -234,4 +332,5 @@
     </p-tabs>
 
   </div>
+
 </div>

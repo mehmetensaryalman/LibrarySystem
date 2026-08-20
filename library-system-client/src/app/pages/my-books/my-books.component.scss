@@ -73,6 +73,50 @@
     forwards;
 }
 
+.restriction-card {
+  width: min(1400px, 100%);
+  margin: 0 auto 1rem;
+
+  padding: 1rem 1.25rem;
+
+  border: 1px solid #fed7aa;
+  border-radius: 0.75rem;
+
+  background: #fff7ed;
+  color: #9a3412;
+
+  box-shadow:
+    0 8px 24px
+    rgba(0, 0, 0, 0.04);
+}
+
+.restriction-card-title {
+  margin-bottom: 0.75rem;
+
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.restriction-section {
+  line-height: 1.55;
+
+  p {
+    margin:
+      0.35rem
+      0
+      0;
+  }
+
+  & + & {
+    margin-top: 1rem;
+    padding-top: 1rem;
+
+    border-top:
+      1px solid
+      #fed7aa;
+  }
+}
+
 @keyframes success-message-fade-out {
   from {
     opacity: 1;
@@ -80,5 +124,25 @@
 
   to {
     opacity: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 1rem;
+  }
+
+  .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .restriction-card {
+    padding: 1rem;
   }
 }

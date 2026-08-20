@@ -1,4 +1,5 @@
-﻿using LibrarySystem.Application.Common.Models;
+﻿using LibrarySystem.Application.Common.Constants;
+using LibrarySystem.Application.Common.Models;
 using LibrarySystem.Application.DTOs.Borrow;
 using LibrarySystem.Application.Interfaces.Borrow;
 using LibrarySystem.Application.Interfaces.Realtime;
@@ -87,17 +88,6 @@ public class BorrowService :
             };
         }
 
-        if (book.Stock <= 0)
-        {
-            return new OperationResultDto
-            {
-                Success = false,
-
-                Message =
-                    "Kitap stokta bulunmuyor."
-            };
-        }
-
         var activeBorrow =
             await _borrowRepository
                 .GetActiveBorrowAsync(
@@ -112,6 +102,36 @@ public class BorrowService :
 
                 Message =
                     "Bu kitabı iade etmeden tekrar ödünç alamazsınız."
+            };
+        }
+
+        var activeBorrowCount =
+            await _borrowRepository
+                .GetActiveBorrowCountAsync(
+                    userId);
+
+        if (
+            activeBorrowCount >=
+            BorrowRules
+                .MaxActiveBorrowCount)
+        {
+            return new OperationResultDto
+            {
+                Success = false,
+
+                Message =
+                    $"Aynı anda en fazla {BorrowRules.MaxActiveBorrowCount} kitap ödünç alabilirsiniz. Yeni kitap ödünç alabilmek için mevcut kitaplarınızdan en az birini iade etmeniz gerekmektedir."
+            };
+        }
+
+        if (book.Stock <= 0)
+        {
+            return new OperationResultDto
+            {
+                Success = false,
+
+                Message =
+                    "Kitap stokta bulunmuyor."
             };
         }
 
@@ -180,6 +200,20 @@ public class BorrowService :
 
                 Message =
                     "Aktif cezanız bulunduğu için yeni kitap ödünç alamazsınız."
+            };
+        }
+
+        if (
+            writeStatus ==
+            BorrowWriteStatus
+                .ActiveBorrowLimitReached)
+        {
+            return new OperationResultDto
+            {
+                Success = false,
+
+                Message =
+                    $"Aynı anda en fazla {BorrowRules.MaxActiveBorrowCount} kitap ödünç alabilirsiniz. Yeni kitap ödünç alabilmek için mevcut kitaplarınızdan en az birini iade etmeniz gerekmektedir."
             };
         }
 
@@ -481,6 +515,40 @@ public class BorrowService :
                         record.IsReturned
                 })
             .ToList();
+    }
+
+    public async Task<BorrowPenaltyStatusDto>
+        GetMyPenaltyStatusAsync(
+            string userId)
+    {
+        var currentDate =
+            DateTime.UtcNow;
+
+        var hasOverdueBorrow =
+            await _borrowRepository
+                .HasOverdueActiveBorrowAsync(
+                    userId,
+                    currentDate);
+
+        var activePenaltyEndDate =
+            await _borrowRepository
+                .GetActivePenaltyEndDateAsync(
+                    userId,
+                    currentDate);
+
+        return new BorrowPenaltyStatusDto
+        {
+            HasOverdueBorrow =
+                hasOverdueBorrow,
+
+            HasActivePenalty =
+                activePenaltyEndDate
+                    .HasValue,
+
+            PenaltyEndDate =
+                AsUtc(
+                    activePenaltyEndDate)
+        };
     }
 
     public async Task<

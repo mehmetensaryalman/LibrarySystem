@@ -20,6 +20,10 @@ public interface IBorrowService
         GetMyBooksAsync(
             string userId);
 
+    Task<BorrowPenaltyStatusDto>
+        GetMyPenaltyStatusAsync(
+            string userId);
+
     Task<List<AdminBorrowResponseDto>>
         GetAllBorrowsForAdminAsync();
 }

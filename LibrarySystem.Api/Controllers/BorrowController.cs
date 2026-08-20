@@ -106,6 +106,31 @@ public class BorrowController : ControllerBase
         return Ok(books);
     }
 
+    [HttpGet(
+        "borrow/my-penalty-status")]
+    [Authorize(Policy = "BorrowerOnly")]
+    public async Task<IActionResult>
+        GetMyPenaltyStatus()
+    {
+        var userId =
+            GetUserId();
+
+        if (
+            string.IsNullOrWhiteSpace(
+                userId))
+        {
+            return Unauthorized();
+        }
+
+        var penaltyStatus =
+            await _borrowService
+                .GetMyPenaltyStatusAsync(
+                    userId);
+
+        return Ok(
+            penaltyStatus);
+    }
+
     [HttpGet("admin/borrows")]
     [Authorize(
         Roles = RoleNames.Admin)]

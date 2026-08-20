@@ -1,4 +1,5 @@
-﻿using LibrarySystem.Application.Common.Models;
+﻿using LibrarySystem.Application.Common.Constants;
+using LibrarySystem.Application.Common.Models;
 using LibrarySystem.Application.Interfaces.Repositories;
 using LibrarySystem.Domain.Entities;
 using LibrarySystem.Infrastructure.Persistence;
@@ -57,6 +58,19 @@ public class BorrowRepository :
             .FirstOrDefaultAsync(record =>
                 record.Id ==
                     borrowRecordId &&
+                !record.IsReturned);
+    }
+
+    public async Task<int>
+        GetActiveBorrowCountAsync(
+            string userId)
+    {
+        return await _dbContext
+            .BorrowRecords
+            .AsNoTracking()
+            .CountAsync(record =>
+                record.UserId ==
+                    userId &&
                 !record.IsReturned);
     }
 
@@ -210,6 +224,28 @@ public class BorrowRepository :
                         .ActivePenalty;
             }
 
+            var activeBorrowCount =
+                await _dbContext
+                    .BorrowRecords
+                    .AsNoTracking()
+                    .CountAsync(record =>
+                        record.UserId ==
+                            borrowRecord.UserId &&
+                        !record.IsReturned);
+
+            if (
+                activeBorrowCount >=
+                BorrowRules
+                    .MaxActiveBorrowCount)
+            {
+                await transaction
+                    .RollbackAsync();
+
+                return
+                    BorrowWriteStatus
+                        .ActiveBorrowLimitReached;
+            }
+
             var affectedBookRows =
                 await _dbContext.Books
                     .Where(book =>
@@ -288,14 +324,6 @@ public class BorrowRepository :
 
         try
         {
-            /*
-             * Aynı kullanıcı için borrow/return/penalty
-             * işlemlerini kısa süreli sıraya sokar.
-             *
-             * Böylece aynı kullanıcının iki kitabı
-             * eşzamanlı geç iade edilirse cezalar
-             * birbirinin üzerine yazılmaz.
-             */
             await LockUserAsync(
                 userId);
 

@@ -13,6 +13,7 @@ import {
 import {
   AdminBorrow,
   BorrowedBook,
+  BorrowPenaltyStatus,
   OperationResult
 } from '../models/borrow.models';
 
@@ -64,6 +65,14 @@ export class BorrowService {
     return this.http
       .get<BorrowedBook[]>(
         `${this.apiUrl}/borrow/my-books`
+      );
+  }
+
+  getMyPenaltyStatus():
+    Observable<BorrowPenaltyStatus> {
+    return this.http
+      .get<BorrowPenaltyStatus>(
+        `${this.apiUrl}/borrow/my-penalty-status`
       );
   }
 

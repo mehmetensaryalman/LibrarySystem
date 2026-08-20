@@ -40,3 +40,9 @@ export interface AdminBorrowNotification {
   userEmail: string;
   borrowDate: string;
 }
+
+export interface BorrowPenaltyStatus {
+  hasOverdueBorrow: boolean;
+  hasActivePenalty: boolean;
+  penaltyEndDate: string | null;
+}

@@ -6,5 +6,6 @@ public enum BorrowWriteStatus
     BookUnavailable,
     DuplicateActiveBorrow,
     OverdueActiveBorrow,
-    ActivePenalty
+    ActivePenalty,
+    ActiveBorrowLimitReached
 }

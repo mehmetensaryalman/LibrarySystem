@@ -1,4 +1,7 @@
-import { DatePipe } from '@angular/common';
+import {
+  DatePipe
+} from '@angular/common';
+
 import {
   Component,
   OnDestroy,
@@ -6,31 +9,60 @@ import {
   computed,
   signal
 } from '@angular/core';
-import { Router } from '@angular/router';
+
+import {
+  Router
+} from '@angular/router';
+
 import {
   finalize,
   Subscription
 } from 'rxjs';
 
-import { ButtonModule } from 'primeng/button';
-import { TableModule } from 'primeng/table';
-import { TabsModule } from 'primeng/tabs';
+import {
+  ButtonModule
+} from 'primeng/button';
 
-import { BorrowedBook } from '../../core/models/borrow.models';
-import { AuthService } from '../../core/services/auth.service';
-import { BorrowService } from '../../core/services/borrow.service';
-import { SignalRService } from '../../core/services/signalr.service';
+import {
+  TableModule
+} from 'primeng/table';
+
+import {
+  TabsModule
+} from 'primeng/tabs';
+
+import {
+  BorrowedBook,
+  BorrowPenaltyStatus
+} from '../../core/models/borrow.models';
+
+import {
+  AuthService
+} from '../../core/services/auth.service';
+
+import {
+  BorrowService
+} from '../../core/services/borrow.service';
+
+import {
+  SignalRService
+} from '../../core/services/signalr.service';
 
 @Component({
   selector: 'app-my-books',
+
   imports: [
     DatePipe,
     ButtonModule,
     TableModule,
     TabsModule
   ],
-  templateUrl: './my-books.component.html',
-  styleUrl: './my-books.component.scss'
+
+  templateUrl:
+    './my-books.component.html',
+
+  styleUrl:
+    './my-books.component.scss'
 })
 export class MyBooksComponent
   implements OnInit, OnDestroy {
@@ -38,15 +70,36 @@ export class MyBooksComponent
   borrowedBooks =
     signal<BorrowedBook[]>([]);
 
+  penaltyStatus =
+    signal<BorrowPenaltyStatus | null>(
+      null
+    );
+
   activeBorrowedBooks = computed(() =>
     this.borrowedBooks()
-      .filter(book => !book.isReturned)
+      .filter(book =>
+        !book.isReturned)
   );
 
   returnedBooks = computed(() =>
     this.borrowedBooks()
-      .filter(book => book.isReturned)
+      .filter(book =>
+        book.isReturned)
   );
+
+  hasBorrowRestriction = computed(() => {
+    const status =
+      this.penaltyStatus();
+
+    if (!status) {
+      return false;
+    }
+
+    return (
+      status.hasOverdueBorrow ||
+      status.hasActivePenalty
+    );
+  });
 
   loading = signal(false);
 
@@ -60,7 +113,12 @@ export class MyBooksComponent
     Subscription | null = null;
 
   private successMessageTimeout:
-    ReturnType<typeof setTimeout> | null = null;
+    ReturnType<typeof setTimeout> |
+    null = null;
+
+  private successMessageRestartTimeout:
+    ReturnType<typeof setTimeout> |
+    null = null;
 
   constructor(
     private readonly borrowService:
@@ -82,24 +140,41 @@ export class MyBooksComponent
       this.signalRService
         .borrowsChanged$
         .subscribe(() => {
-          this.loadMyBooks();
+          this.refreshPageData();
         });
 
     void this.signalRService
       .startConnection();
 
-    this.loadMyBooks();
+    this.refreshPageData();
   }
 
   ngOnDestroy(): void {
     this.borrowsChangedSubscription
       ?.unsubscribe();
 
-    if (this.successMessageTimeout !== null) {
+    if (
+      this.successMessageTimeout !==
+      null
+    ) {
       clearTimeout(
         this.successMessageTimeout
       );
     }
+
+    if (
+      this.successMessageRestartTimeout !==
+      null
+    ) {
+      clearTimeout(
+        this.successMessageRestartTimeout
+      );
+    }
+  }
+
+  private refreshPageData(): void {
+    this.loadMyBooks();
+    this.loadPenaltyStatus();
   }
 
   loadMyBooks(): void {
@@ -129,6 +204,29 @@ export class MyBooksComponent
       });
   }
 
+  private loadPenaltyStatus(): void {
+    this.borrowService
+      .getMyPenaltyStatus()
+      .subscribe({
+        next: status => {
+          this.penaltyStatus.set(
+            status
+          );
+        },
+
+        error: error => {
+          console.error(
+            'Ceza durumu alınamadı:',
+            error
+          );
+
+          this.penaltyStatus.set(
+            null
+          );
+        }
+      });
+  }
+
   getRemainingTime(
     book: BorrowedBook
   ): string {
@@ -140,7 +238,9 @@ export class MyBooksComponent
       new Date();
 
     const dueDate =
-      new Date(book.dueDate);
+      new Date(
+        book.dueDate
+      );
 
     const difference =
       dueDate.getTime() -
@@ -152,7 +252,9 @@ export class MyBooksComponent
     if (difference < 0) {
       const overdueDays =
         Math.ceil(
-          Math.abs(difference) /
+          Math.abs(
+            difference
+          ) /
           millisecondsPerDay
         );
 
@@ -176,10 +278,14 @@ export class MyBooksComponent
     }
 
     const dueDate =
-      new Date(book.dueDate);
+      new Date(
+        book.dueDate
+      );
 
     const returnDate =
-      new Date(book.returnDate);
+      new Date(
+        book.returnDate
+      );
 
     if (
       returnDate.getTime() <=
@@ -214,7 +320,9 @@ export class MyBooksComponent
     );
 
     this.borrowService
-      .returnBook(book.bookId)
+      .returnBook(
+        book.bookId
+      )
       .pipe(
         finalize(() => {
           this.returningBookId.set(
@@ -228,6 +336,7 @@ export class MyBooksComponent
             this.errorMessage.set(
               result.message
             );
+
             return;
           }
 
@@ -248,23 +357,49 @@ export class MyBooksComponent
   private showSuccessMessage(
     message: string
   ): void {
-    if (this.successMessageTimeout !== null) {
+    if (
+      this.successMessageTimeout !==
+      null
+    ) {
       clearTimeout(
         this.successMessageTimeout
       );
+
+      this.successMessageTimeout =
+        null;
     }
 
-    this.successMessage.set(
-      message
-    );
+    if (
+      this.successMessageRestartTimeout !==
+      null
+    ) {
+      clearTimeout(
+        this.successMessageRestartTimeout
+      );
 
-    this.successMessageTimeout =
+      this.successMessageRestartTimeout =
+        null;
+    }
+
+    this.successMessage.set('');
+
+    this.successMessageRestartTimeout =
       setTimeout(() => {
-        this.successMessage.set('');
+        this.successMessage.set(
+          message
+        );
+
+        this.successMessageRestartTimeout =
+          null;
 
         this.successMessageTimeout =
-          null;
-      }, 3600);
+          setTimeout(() => {
+            this.successMessage.set('');
+
+            this.successMessageTimeout =
+              null;
+          }, 3600);
+      }, 0);
   }
 
   goToBooks(): void {
