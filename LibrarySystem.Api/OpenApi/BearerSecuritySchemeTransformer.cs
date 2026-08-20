@@ -18,13 +18,16 @@ internal sealed class BearerSecuritySchemeTransformer(
                 .GetAllSchemesAsync();
 
         if (!authenticationSchemes.Any(
-            scheme => scheme.Name == "Bearer"))
+            scheme =>
+                scheme.Name == "Bearer"))
         {
             return;
         }
 
         var securitySchemes =
-            new Dictionary<string, IOpenApiSecurityScheme>
+            new Dictionary<
+                string,
+                IOpenApiSecurityScheme>
             {
                 ["Bearer"] =
                     new OpenApiSecurityScheme
@@ -32,37 +35,58 @@ internal sealed class BearerSecuritySchemeTransformer(
                         Type =
                             SecuritySchemeType.Http,
 
-                        Scheme = "bearer",
+                        Scheme =
+                            "bearer",
 
                         In =
                             ParameterLocation.Header,
 
-                        BearerFormat = "JWT"
+                        BearerFormat =
+                            "JWT"
                     }
             };
 
         document.Components ??=
             new OpenApiComponents();
 
-        document.Components.SecuritySchemes =
-            securitySchemes;
+        document.Components
+            .SecuritySchemes =
+                securitySchemes;
 
-        foreach (var operation in
-            document.Paths.Values
-                .SelectMany(path =>
-                    path.Operations))
+        foreach (
+            var pathItem
+            in document.Paths.Values)
         {
-            operation.Value.Security ??= [];
+            var operations =
+                pathItem?.Operations;
 
-            operation.Value.Security.Add(
-                new OpenApiSecurityRequirement
+            if (operations is null)
+            {
+                continue;
+            }
+
+            foreach (
+                var operation
+                in operations.Values)
+            {
+                if (operation is null)
                 {
-                    [
-                        new OpenApiSecuritySchemeReference(
-                            "Bearer",
-                            document)
-                    ] = []
-                });
+                    continue;
+                }
+
+                operation.Security ??=
+                    [];
+
+                operation.Security.Add(
+                    new OpenApiSecurityRequirement
+                    {
+                        [
+                            new OpenApiSecuritySchemeReference(
+                                "Bearer",
+                                document)
+                        ] = []
+                    });
+            }
         }
     }
 }
