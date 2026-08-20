@@ -1,6 +1,7 @@
 export interface OperationResult {
   success: boolean;
   message: string;
+  penaltyEndDate?: string | null;
 }
 
 export interface BorrowedBook {

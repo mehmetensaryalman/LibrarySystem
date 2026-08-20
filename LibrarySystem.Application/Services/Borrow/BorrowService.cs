@@ -84,7 +84,11 @@ public class BorrowService :
                 Success = false,
 
                 Message =
-                    "Aktif cezanız bulunduğu için yeni kitap ödünç alamazsınız."
+                    "Aktif cezanız bulunduğu için yeni kitap ödünç alamazsınız.",
+
+                PenaltyEndDate =
+                    AsUtc(
+                        activePenaltyEndDate)
             };
         }
 
@@ -194,12 +198,22 @@ public class BorrowService :
             BorrowWriteStatus
                 .ActivePenalty)
         {
+            var currentPenaltyEndDate =
+                await _borrowRepository
+                    .GetActivePenaltyEndDateAsync(
+                        userId,
+                        DateTime.UtcNow);
+
             return new OperationResultDto
             {
                 Success = false,
 
                 Message =
-                    "Aktif cezanız bulunduğu için yeni kitap ödünç alamazsınız."
+                    "Aktif cezanız bulunduğu için yeni kitap ödünç alamazsınız.",
+
+                PenaltyEndDate =
+                    AsUtc(
+                        currentPenaltyEndDate)
             };
         }
 

@@ -554,11 +554,41 @@ export class BookListComponent
         },
 
         error: error => {
-          this.errorMessage.set(
-            error.error?.message ??
-            'Kitap ödünç alınırken bir hata oluştu.'
-          );
+  const message =
+    error.error?.message ??
+    'Kitap ödünç alınırken bir hata oluştu.';
+
+  const penaltyEndDate =
+    error.error?.penaltyEndDate;
+
+  if (penaltyEndDate) {
+    const formattedPenaltyEndDate =
+      new Intl.DateTimeFormat(
+        'tr-TR',
+        {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
         }
+      ).format(
+        new Date(
+          penaltyEndDate
+        )
+      );
+
+    this.errorMessage.set(
+      `${message} Ceza bitiş zamanı: ${formattedPenaltyEndDate}`
+    );
+
+    return;
+  }
+
+  this.errorMessage.set(
+    message
+  );
+}
       });
   }
 
