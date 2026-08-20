@@ -20,6 +20,9 @@ public class LibraryDbContext :
     public DbSet<BorrowRecord> BorrowRecords =>
         Set<BorrowRecord>();
 
+    public DbSet<BorrowPenalty> BorrowPenalties =>
+        Set<BorrowPenalty>();
+
     protected override void OnModelCreating(
         ModelBuilder builder)
     {
@@ -112,6 +115,69 @@ public class LibraryDbContext :
                         x.BorrowRecords)
                     .HasForeignKey(x =>
                         x.BookId)
+                    .OnDelete(
+                        DeleteBehavior.Restrict);
+
+                entity.HasOne<ApplicationUser>()
+                    .WithMany()
+                    .HasForeignKey(x =>
+                        x.UserId)
+                    .OnDelete(
+                        DeleteBehavior.Restrict);
+            });
+
+        builder.Entity<BorrowPenalty>(
+            entity =>
+            {
+                entity.ToTable(
+                    "BorrowPenalties");
+
+                entity.HasKey(x =>
+                    x.Id);
+
+                entity.Property(x =>
+                        x.UserId)
+                    .IsRequired()
+                    .HasMaxLength(450);
+
+                entity.Property(x =>
+                        x.PenaltyDays)
+                    .IsRequired();
+
+                entity.Property(x =>
+                        x.StartDate)
+                    .IsRequired();
+
+                entity.Property(x =>
+                        x.EndDate)
+                    .IsRequired();
+
+                entity.Property(x =>
+                        x.CreatedAt)
+                    .IsRequired();
+
+                entity.HasIndex(x =>
+                        x.BorrowRecordId)
+                    .IsUnique()
+                    .HasDatabaseName(
+                        "UX_BorrowPenalties_BorrowRecordId");
+
+                entity.HasIndex(x => new
+                {
+                    x.UserId,
+                    x.EndDate
+                })
+                    .HasDatabaseName(
+                        "IX_BorrowPenalties_UserId_EndDate");
+
+                entity.HasOne(x =>
+                        x.BorrowRecord)
+                    .WithOne(x =>
+                        x.Penalty)
+                    .HasForeignKey<
+                        BorrowPenalty>(
+                        x =>
+                            x.BorrowRecordId)
                     .OnDelete(
                         DeleteBehavior.Restrict);
 

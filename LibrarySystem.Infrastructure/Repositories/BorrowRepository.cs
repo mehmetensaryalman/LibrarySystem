@@ -60,6 +60,40 @@ public class BorrowRepository :
                 !record.IsReturned);
     }
 
+    public async Task<bool>
+        HasOverdueActiveBorrowAsync(
+            string userId,
+            DateTime currentDate)
+    {
+        return await _dbContext
+            .BorrowRecords
+            .AsNoTracking()
+            .AnyAsync(record =>
+                record.UserId ==
+                    userId &&
+                !record.IsReturned &&
+                record.DueDate <
+                    currentDate);
+    }
+
+    public async Task<DateTime?>
+        GetActivePenaltyEndDateAsync(
+            string userId,
+            DateTime currentDate)
+    {
+        return await _dbContext
+            .BorrowPenalties
+            .AsNoTracking()
+            .Where(penalty =>
+                penalty.UserId ==
+                    userId &&
+                penalty.EndDate >
+                    currentDate)
+            .MaxAsync(penalty =>
+                (DateTime?)
+                    penalty.EndDate);
+    }
+
     public async Task<List<BorrowRecord>>
         GetUserBorrowsAsync(
             string userId)
@@ -132,6 +166,50 @@ public class BorrowRepository :
 
         try
         {
+            await LockUserAsync(
+                borrowRecord.UserId);
+
+            var hasOverdueBorrow =
+                await _dbContext
+                    .BorrowRecords
+                    .AsNoTracking()
+                    .AnyAsync(record =>
+                        record.UserId ==
+                            borrowRecord.UserId &&
+                        !record.IsReturned &&
+                        record.DueDate <
+                            borrowRecord.BorrowDate);
+
+            if (hasOverdueBorrow)
+            {
+                await transaction
+                    .RollbackAsync();
+
+                return
+                    BorrowWriteStatus
+                        .OverdueActiveBorrow;
+            }
+
+            var hasActivePenalty =
+                await _dbContext
+                    .BorrowPenalties
+                    .AsNoTracking()
+                    .AnyAsync(penalty =>
+                        penalty.UserId ==
+                            borrowRecord.UserId &&
+                        penalty.EndDate >
+                            borrowRecord.BorrowDate);
+
+            if (hasActivePenalty)
+            {
+                await transaction
+                    .RollbackAsync();
+
+                return
+                    BorrowWriteStatus
+                        .ActivePenalty;
+            }
+
             var affectedBookRows =
                 await _dbContext.Books
                     .Where(book =>
@@ -198,7 +276,7 @@ public class BorrowRepository :
         }
     }
 
-    public async Task<ReturnWriteStatus>
+    public async Task<ReturnBookWriteResult>
         ReturnBookAsync(
             string userId,
             int bookId,
@@ -210,14 +288,47 @@ public class BorrowRepository :
 
         try
         {
-            var affectedBorrowRows =
+            /*
+             * Aynı kullanıcı için borrow/return/penalty
+             * işlemlerini kısa süreli sıraya sokar.
+             *
+             * Böylece aynı kullanıcının iki kitabı
+             * eşzamanlı geç iade edilirse cezalar
+             * birbirinin üzerine yazılmaz.
+             */
+            await LockUserAsync(
+                userId);
+
+            var activeBorrow =
                 await _dbContext
                     .BorrowRecords
-                    .Where(record =>
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(record =>
                         record.UserId ==
                             userId &&
                         record.BookId ==
                             bookId &&
+                        !record.IsReturned);
+
+            if (activeBorrow is null)
+            {
+                await transaction
+                    .RollbackAsync();
+
+                return new ReturnBookWriteResult
+                {
+                    Status =
+                        ReturnWriteStatus
+                            .ActiveBorrowNotFound
+                };
+            }
+
+            var affectedBorrowRows =
+                await _dbContext
+                    .BorrowRecords
+                    .Where(record =>
+                        record.Id ==
+                            activeBorrow.Id &&
                         !record.IsReturned)
                     .ExecuteUpdateAsync(
                         setters =>
@@ -236,9 +347,12 @@ public class BorrowRepository :
                 await transaction
                     .RollbackAsync();
 
-                return
-                    ReturnWriteStatus
-                        .ActiveBorrowNotFound;
+                return new ReturnBookWriteResult
+                {
+                    Status =
+                        ReturnWriteStatus
+                            .ActiveBorrowNotFound
+                };
             }
 
             var affectedBookRows =
@@ -260,17 +374,108 @@ public class BorrowRepository :
                 await transaction
                     .RollbackAsync();
 
-                return
-                    ReturnWriteStatus
-                        .BookNotFound;
+                return new ReturnBookWriteResult
+                {
+                    Status =
+                        ReturnWriteStatus
+                            .BookNotFound
+                };
+            }
+
+            var penaltyDays = 0;
+
+            DateTime? penaltyStartDate =
+                null;
+
+            DateTime? penaltyEndDate =
+                null;
+
+            if (
+                returnDate >
+                activeBorrow.DueDate)
+            {
+                var overdueDuration =
+                    returnDate -
+                    activeBorrow.DueDate;
+
+                penaltyDays =
+                    Math.Max(
+                        1,
+                        (int)Math.Ceiling(
+                            overdueDuration
+                                .TotalDays));
+
+                var latestActivePenaltyEndDate =
+                    await _dbContext
+                        .BorrowPenalties
+                        .AsNoTracking()
+                        .Where(penalty =>
+                            penalty.UserId ==
+                                userId &&
+                            penalty.EndDate >
+                                returnDate)
+                        .MaxAsync(penalty =>
+                            (DateTime?)
+                                penalty.EndDate);
+
+                penaltyStartDate =
+                    latestActivePenaltyEndDate ??
+                    returnDate;
+
+                penaltyEndDate =
+                    penaltyStartDate.Value
+                        .AddDays(
+                            penaltyDays);
+
+                var penalty =
+                    new BorrowPenalty
+                    {
+                        UserId =
+                            userId,
+
+                        BorrowRecordId =
+                            activeBorrow.Id,
+
+                        PenaltyDays =
+                            penaltyDays,
+
+                        StartDate =
+                            penaltyStartDate.Value,
+
+                        EndDate =
+                            penaltyEndDate.Value,
+
+                        CreatedAt =
+                            returnDate
+                    };
+
+                await _dbContext
+                    .BorrowPenalties
+                    .AddAsync(
+                        penalty);
+
+                await _dbContext
+                    .SaveChangesAsync();
             }
 
             await transaction
                 .CommitAsync();
 
-            return
-                ReturnWriteStatus
-                    .Success;
+            return new ReturnBookWriteResult
+            {
+                Status =
+                    ReturnWriteStatus
+                        .Success,
+
+                PenaltyDays =
+                    penaltyDays,
+
+                PenaltyStartDate =
+                    penaltyStartDate,
+
+                PenaltyEndDate =
+                    penaltyEndDate
+            };
         }
         catch
         {
@@ -278,6 +483,29 @@ public class BorrowRepository :
                 .RollbackAsync();
 
             throw;
+        }
+    }
+
+    private async Task
+        LockUserAsync(
+            string userId)
+    {
+        var user =
+            await _dbContext.Users
+                .FromSqlInterpolated(
+                    $"""
+                    SELECT *
+                    FROM [AspNetUsers]
+                    WITH (UPDLOCK, HOLDLOCK)
+                    WHERE [Id] = {userId}
+                    """)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+
+        if (user is null)
+        {
+            throw new InvalidOperationException(
+                "Kullanıcı bulunamadı.");
         }
     }
 

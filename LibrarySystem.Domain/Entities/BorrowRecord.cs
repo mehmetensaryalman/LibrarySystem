@@ -4,7 +4,8 @@ public class BorrowRecord
 {
     public int Id { get; set; }
 
-    public string UserId { get; set; } = string.Empty;
+    public string UserId { get; set; }
+        = string.Empty;
 
     public int BookId { get; set; }
 
@@ -16,5 +17,12 @@ public class BorrowRecord
 
     public bool IsReturned { get; set; }
 
-    public Book Book { get; set; } = null!;
+    public Book Book { get; set; }
+        = null!;
+
+    public BorrowPenalty? Penalty
+    {
+        get;
+        set;
+    }
 }

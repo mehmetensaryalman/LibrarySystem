@@ -15,6 +15,14 @@ public interface IBorrowRepository
     Task<BorrowRecord?> GetActiveBorrowByIdAsync(
         int borrowRecordId);
 
+    Task<bool> HasOverdueActiveBorrowAsync(
+        string userId,
+        DateTime currentDate);
+
+    Task<DateTime?> GetActivePenaltyEndDateAsync(
+        string userId,
+        DateTime currentDate);
+
     Task<List<BorrowRecord>> GetUserBorrowsAsync(
         string userId);
 
@@ -28,7 +36,7 @@ public interface IBorrowRepository
         BorrowBookAsync(
             BorrowRecord borrowRecord);
 
-    Task<ReturnWriteStatus>
+    Task<ReturnBookWriteResult>
         ReturnBookAsync(
             string userId,
             int bookId,

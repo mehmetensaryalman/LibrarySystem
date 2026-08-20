@@ -4,5 +4,7 @@ public enum BorrowWriteStatus
 {
     Success,
     BookUnavailable,
-    DuplicateActiveBorrow
+    DuplicateActiveBorrow,
+    OverdueActiveBorrow,
+    ActivePenalty
 }

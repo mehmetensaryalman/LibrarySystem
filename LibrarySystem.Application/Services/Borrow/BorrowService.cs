@@ -45,9 +45,45 @@ public class BorrowService :
             return new OperationResultDto
             {
                 Success = false,
-
                 Message =
                     "Kitap bulunamadı."
+            };
+        }
+
+        var borrowDate =
+            DateTime.UtcNow;
+
+        var hasOverdueBorrow =
+            await _borrowRepository
+                .HasOverdueActiveBorrowAsync(
+                    userId,
+                    borrowDate);
+
+        if (hasOverdueBorrow)
+        {
+            return new OperationResultDto
+            {
+                Success = false,
+
+                Message =
+                    "Gecikmiş kitabınız bulunduğu için yeni kitap ödünç alamazsınız. Önce geciken kitabınızı iade etmeniz gerekmektedir."
+            };
+        }
+
+        var activePenaltyEndDate =
+            await _borrowRepository
+                .GetActivePenaltyEndDateAsync(
+                    userId,
+                    borrowDate);
+
+        if (activePenaltyEndDate.HasValue)
+        {
+            return new OperationResultDto
+            {
+                Success = false,
+
+                Message =
+                    "Aktif cezanız bulunduğu için yeni kitap ödünç alamazsınız."
             };
         }
 
@@ -94,9 +130,6 @@ public class BorrowService :
                 ? email
                 : "Bilinmiyor";
 
-        var borrowDate =
-            DateTime.UtcNow;
-
         var borrowRecord =
             new BorrowRecord
             {
@@ -121,6 +154,34 @@ public class BorrowService :
             await _borrowRepository
                 .BorrowBookAsync(
                     borrowRecord);
+
+        if (
+            writeStatus ==
+            BorrowWriteStatus
+                .OverdueActiveBorrow)
+        {
+            return new OperationResultDto
+            {
+                Success = false,
+
+                Message =
+                    "Gecikmiş kitabınız bulunduğu için yeni kitap ödünç alamazsınız. Önce geciken kitabınızı iade etmeniz gerekmektedir."
+            };
+        }
+
+        if (
+            writeStatus ==
+            BorrowWriteStatus
+                .ActivePenalty)
+        {
+            return new OperationResultDto
+            {
+                Success = false,
+
+                Message =
+                    "Aktif cezanız bulunduğu için yeni kitap ödünç alamazsınız."
+            };
+        }
 
         if (
             writeStatus ==
@@ -236,7 +297,7 @@ public class BorrowService :
             };
         }
 
-        var writeStatus =
+        var writeResult =
             await _borrowRepository
                 .ReturnBookAsync(
                     userId,
@@ -244,7 +305,7 @@ public class BorrowService :
                     DateTime.UtcNow);
 
         if (
-            writeStatus ==
+            writeResult.Status ==
             ReturnWriteStatus
                 .ActiveBorrowNotFound)
         {
@@ -258,7 +319,7 @@ public class BorrowService :
         }
 
         if (
-            writeStatus ==
+            writeResult.Status ==
             ReturnWriteStatus
                 .BookNotFound)
         {
@@ -276,6 +337,17 @@ public class BorrowService :
 
         await _realtimeNotifier
             .NotifyBorrowsChangedAsync();
+
+        if (writeResult.PenaltyDays > 0)
+        {
+            return new OperationResultDto
+            {
+                Success = true,
+
+                Message =
+                    $"Kitap başarıyla iade edildi. {writeResult.PenaltyDays} günlük ödünç alma cezası uygulandı."
+            };
+        }
 
         return new OperationResultDto
         {
@@ -306,7 +378,7 @@ public class BorrowService :
             };
         }
 
-        var writeStatus =
+        var writeResult =
             await _borrowRepository
                 .ReturnBookAsync(
                     activeBorrow.UserId,
@@ -314,7 +386,7 @@ public class BorrowService :
                     DateTime.UtcNow);
 
         if (
-            writeStatus ==
+            writeResult.Status ==
             ReturnWriteStatus
                 .ActiveBorrowNotFound)
         {
@@ -328,7 +400,7 @@ public class BorrowService :
         }
 
         if (
-            writeStatus ==
+            writeResult.Status ==
             ReturnWriteStatus
                 .BookNotFound)
         {
@@ -346,6 +418,17 @@ public class BorrowService :
 
         await _realtimeNotifier
             .NotifyBorrowsChangedAsync();
+
+        if (writeResult.PenaltyDays > 0)
+        {
+            return new OperationResultDto
+            {
+                Success = true,
+
+                Message =
+                    $"Kitap başarıyla iade alındı. Kullanıcıya {writeResult.PenaltyDays} günlük ödünç alma cezası uygulandı."
+            };
+        }
 
         return new OperationResultDto
         {
