@@ -4,11 +4,14 @@
   "scripts": {
     "ng": "ng",
     "generate:primeui-license": "node scripts/generate-primeui-license.mjs",
-    "prestart": "npm run generate:primeui-license",
+    "patch:primeng-toast": "node scripts/patch-primeng-toast.mjs",
+    "prepare:local-deps": "npm run generate:primeui-license && npm run patch:primeng-toast",
+    "postinstall": "npm run patch:primeng-toast",
+    "prestart": "npm run prepare:local-deps",
     "start": "ng serve",
-    "prebuild": "npm run generate:primeui-license",
+    "prebuild": "npm run prepare:local-deps",
     "build": "ng build",
-    "prewatch": "npm run generate:primeui-license",
+    "prewatch": "npm run prepare:local-deps",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
