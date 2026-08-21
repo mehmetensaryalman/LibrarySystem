@@ -14,49 +14,34 @@ namespace LibrarySystem.Application.Services.Borrow;
 public class BorrowService :
     IBorrowService
 {
-    private readonly
-        IBorrowRepository _borrowRepository;
-
-    private readonly
-        INotificationService
-        _notificationService;
-
-    private readonly
-        IRealtimeNotifier _realtimeNotifier;
+    private readonly IBorrowRepository _borrowRepository;
+    private readonly INotificationService _notificationService;
+    private readonly IRealtimeNotifier _realtimeNotifier;
 
     public BorrowService(
         IBorrowRepository borrowRepository,
         INotificationService notificationService,
         IRealtimeNotifier realtimeNotifier)
     {
-        _borrowRepository =
-            borrowRepository;
-
-        _notificationService =
-            notificationService;
-
-        _realtimeNotifier =
-            realtimeNotifier;
+        _borrowRepository = borrowRepository;
+        _notificationService = notificationService;
+        _realtimeNotifier = realtimeNotifier;
     }
 
-    public async Task<OperationResultDto>
-        BorrowAsync(
-            string userId,
-            int bookId)
+    public async Task<OperationResultDto> BorrowAsync(
+        string userId,
+        int bookId)
     {
         var book =
-            await _borrowRepository
-                .GetBookByIdAsync(
-                    bookId);
+            await _borrowRepository.GetBookByIdAsync(
+                bookId);
 
         if (book is null)
         {
             return new OperationResultDto
             {
                 Success = false,
-
-                Message =
-                    "Kitap bulunamadı."
+                Message = "Kitap bulunamadı."
             };
         }
 
@@ -74,7 +59,6 @@ public class BorrowService :
             return new OperationResultDto
             {
                 Success = false,
-
                 Message =
                     "Gecikmiş kitabınız bulunduğu için yeni ödünç talebi oluşturamazsınız. Önce geciken kitabınızı fiziksel olarak kütüphaneye teslim etmeniz gerekmektedir."
             };
@@ -91,13 +75,10 @@ public class BorrowService :
             return new OperationResultDto
             {
                 Success = false,
-
                 Message =
                     "Aktif cezanız bulunduğu için yeni ödünç talebi oluşturamazsınız.",
-
                 PenaltyEndDate =
-                    AsUtc(
-                        activePenaltyEndDate)
+                    AsUtc(activePenaltyEndDate)
             };
         }
 
@@ -112,7 +93,6 @@ public class BorrowService :
             return new OperationResultDto
             {
                 Success = false,
-
                 Message =
                     "Bu kitap zaten aktif olarak üzerinizde bulunmaktadır."
             };
@@ -125,13 +105,11 @@ public class BorrowService :
 
         if (
             activeBorrowCount >=
-            BorrowRules
-                .MaxActiveBorrowCount)
+            BorrowRules.MaxActiveBorrowCount)
         {
             return new OperationResultDto
             {
                 Success = false,
-
                 Message =
                     $"Aynı anda en fazla {BorrowRules.MaxActiveBorrowCount} kitap ödünç alabilirsiniz. Yeni ödünç talebi oluşturabilmek için mevcut kitaplarınızdan en az birini fiziksel olarak iade etmeniz gerekmektedir."
             };
@@ -148,7 +126,6 @@ public class BorrowService :
             return new OperationResultDto
             {
                 Success = false,
-
                 Message =
                     "Bu kitap için zaten bekleyen bir ödünç talebiniz bulunmaktadır."
             };
@@ -159,7 +136,6 @@ public class BorrowService :
             return new OperationResultDto
             {
                 Success = false,
-
                 Message =
                     "Kitap şu anda stokta bulunmadığı için ödünç talebi oluşturulamıyor."
             };
@@ -168,30 +144,15 @@ public class BorrowService :
         var borrowRequest =
             new BorrowRequest
             {
-                UserId =
-                    userId,
-
-                BookId =
-                    bookId,
-
+                UserId = userId,
+                BookId = bookId,
                 Status =
-                    BorrowRequestStatus
-                        .Pending,
-
-                RequestedAt =
-                    requestDate,
-
-                ProcessedAt =
-                    null,
-
-                ProcessedByAdminUserId =
-                    null,
-
-                BorrowRecordId =
-                    null,
-
-                RejectionReason =
-                    null
+                    BorrowRequestStatus.Pending,
+                RequestedAt = requestDate,
+                ProcessedAt = null,
+                ProcessedByAdminUserId = null,
+                BorrowRecordId = null,
+                RejectionReason = null
             };
 
         var writeStatus =
@@ -207,7 +168,6 @@ public class BorrowService :
             return new OperationResultDto
             {
                 Success = false,
-
                 Message =
                     "Bu kitap için zaten bekleyen bir ödünç talebiniz bulunmaktadır."
             };
@@ -252,7 +212,6 @@ public class BorrowService :
         return new OperationResultDto
         {
             Success = true,
-
             Message =
                 "Ödünç talebiniz başarıyla oluşturuldu. Kitabı teslim almak için kütüphane görevlisinin onayı gerekmektedir."
         };
@@ -269,8 +228,9 @@ public class BorrowService :
         var userEmails =
             await _borrowRepository
                 .GetUserEmailsAsync(
-                    requests.Select(request =>
-                        request.UserId));
+                    requests.Select(
+                        request =>
+                            request.UserId));
 
         return requests
             .Select(request =>
@@ -331,7 +291,6 @@ public class BorrowService :
                 return new OperationResultDto
                 {
                     Success = false,
-
                     Message =
                         "Bekleyen ödünç talebi bulunamadı veya talep daha önce işlenmiş."
                 };
@@ -343,7 +302,6 @@ public class BorrowService :
                 return new OperationResultDto
                 {
                     Success = false,
-
                     Message =
                         "Kitap artık stokta bulunmuyor veya arşivlenmiş. Ödünç talebi onaylanamadı."
                 };
@@ -355,7 +313,6 @@ public class BorrowService :
                 return new OperationResultDto
                 {
                     Success = false,
-
                     Message =
                         "Kullanıcı bu kitabı zaten aktif olarak ödünç almış durumda."
                 };
@@ -367,7 +324,6 @@ public class BorrowService :
                 return new OperationResultDto
                 {
                     Success = false,
-
                     Message =
                         "Kullanıcının gecikmiş kitabı bulunduğu için ödünç talebi onaylanamaz."
                 };
@@ -388,10 +344,8 @@ public class BorrowService :
                 return new OperationResultDto
                 {
                     Success = false,
-
                     Message =
                         "Kullanıcının aktif ödünç alma cezası bulunduğu için talep onaylanamaz.",
-
                     PenaltyEndDate =
                         AsUtc(
                             penaltyEndDate)
@@ -404,7 +358,6 @@ public class BorrowService :
                 return new OperationResultDto
                 {
                     Success = false,
-
                     Message =
                         $"Kullanıcı aynı anda en fazla {BorrowRules.MaxActiveBorrowCount} kitap ödünç alabilir. Aktif ödünç limiti dolu."
                 };
@@ -422,7 +375,6 @@ public class BorrowService :
                 return new OperationResultDto
                 {
                     Success = true,
-
                     Message =
                         "Ödünç talebi onaylandı. Kitap kullanıcıya fiziksel olarak teslim edildi ve ödünç kaydı oluşturuldu."
                 };
@@ -432,7 +384,6 @@ public class BorrowService :
                 return new OperationResultDto
                 {
                     Success = false,
-
                     Message =
                         "Ödünç talebi işlenirken beklenmeyen bir durum oluştu."
                 };
@@ -458,7 +409,6 @@ public class BorrowService :
             return new OperationResultDto
             {
                 Success = false,
-
                 Message =
                     "Reddetme açıklaması en fazla 500 karakter olabilir."
             };
@@ -480,7 +430,6 @@ public class BorrowService :
             return new OperationResultDto
             {
                 Success = false,
-
                 Message =
                     "Bekleyen ödünç talebi bulunamadı veya talep daha önce işlenmiş."
             };
@@ -489,14 +438,13 @@ public class BorrowService :
         return new OperationResultDto
         {
             Success = true,
-
             Message =
                 "Ödünç talebi reddedildi."
         };
     }
 
     public async Task<OperationResultDto>
-        ReturnAsync(
+        RequestReturnAsync(
             string userId,
             int bookId)
     {
@@ -511,9 +459,20 @@ public class BorrowService :
             return new OperationResultDto
             {
                 Success = false,
-
                 Message =
-                    "İade edilecek aktif ödünç kaydı bulunamadı."
+                    "İade talebi oluşturulabilecek aktif ödünç kaydı bulunamadı."
+            };
+        }
+
+        if (
+            activeBorrow.ReturnRequestedAt
+                .HasValue)
+        {
+            return new OperationResultDto
+            {
+                Success = false,
+                Message =
+                    "Bu kitap için zaten bekleyen bir iade talebiniz bulunmaktadır."
             };
         }
 
@@ -527,76 +486,95 @@ public class BorrowService :
             return new OperationResultDto
             {
                 Success = false,
-
                 Message =
                     "Kitap bulunamadı."
             };
         }
 
-        var writeResult =
+        var writeStatus =
             await _borrowRepository
-                .ReturnBookAsync(
+                .RequestReturnAsync(
                     userId,
                     bookId,
                     DateTime.UtcNow);
 
         if (
-            writeResult.Status ==
-            ReturnWriteStatus
+            writeStatus ==
+            ReturnRequestWriteStatus
                 .ActiveBorrowNotFound)
         {
             return new OperationResultDto
             {
                 Success = false,
-
                 Message =
-                    "İade edilecek aktif ödünç kaydı bulunamadı."
+                    "İade talebi oluşturulabilecek aktif ödünç kaydı bulunamadı."
             };
         }
 
         if (
-            writeResult.Status ==
-            ReturnWriteStatus
-                .BookNotFound)
+            writeStatus ==
+            ReturnRequestWriteStatus
+                .AlreadyRequested)
         {
             return new OperationResultDto
             {
                 Success = false,
-
                 Message =
-                    "Kitap bulunamadı."
+                    "Bu kitap için zaten bekleyen bir iade talebiniz bulunmaktadır."
             };
         }
 
+        var userEmails =
+            await _borrowRepository
+                .GetUserEmailsAsync(
+                    new[]
+                    {
+                        userId
+                    });
+
+        var userEmail =
+            userEmails.TryGetValue(
+                userId,
+                out var email)
+                ? email
+                : "Bilinmiyor";
+
+        await _notificationService
+            .CreateForAdminsAsync(
+                new CreateAdminNotificationDto
+                {
+                    Type =
+                        NotificationType
+                            .ReturnRequested,
+
+                    Title =
+                        "Yeni İade Talebi",
+
+                    Message =
+                        $"{userEmail} kullanıcısı \"{book.Name}\" kitabı için iade talebi oluşturdu.",
+
+                    BorrowRecordId =
+                        activeBorrow.Id
+                });
+
         await _realtimeNotifier
-            .NotifyBooksChangedAsync();
+            .NotifyAdminNotificationsChangedAsync();
 
         await _realtimeNotifier
             .NotifyBorrowsChangedAsync();
 
-        if (writeResult.PenaltyDays > 0)
-        {
-            return new OperationResultDto
-            {
-                Success = true,
-
-                Message =
-                    $"Kitap başarıyla iade edildi. {writeResult.PenaltyDays} günlük ödünç alma cezası uygulandı."
-            };
-        }
-
         return new OperationResultDto
         {
             Success = true,
-
             Message =
-                "Kitap başarıyla iade edildi."
+                "İade talebiniz başarıyla oluşturuldu. Kitabı kütüphane görevlisine fiziksel olarak teslim ediniz. İade işlemi görevli onayından sonra tamamlanacaktır."
         };
     }
 
     public async Task<OperationResultDto>
         ReturnForAdminAsync(
-            int borrowRecordId)
+            int borrowRecordId,
+            string adminUserId)
     {
         var activeBorrow =
             await _borrowRepository
@@ -608,7 +586,6 @@ public class BorrowService :
             return new OperationResultDto
             {
                 Success = false,
-
                 Message =
                     "İade edilecek aktif ödünç kaydı bulunamadı."
             };
@@ -619,6 +596,7 @@ public class BorrowService :
                 .ReturnBookAsync(
                     activeBorrow.UserId,
                     activeBorrow.BookId,
+                    adminUserId,
                     DateTime.UtcNow);
 
         if (
@@ -629,7 +607,6 @@ public class BorrowService :
             return new OperationResultDto
             {
                 Success = false,
-
                 Message =
                     "İade edilecek aktif ödünç kaydı bulunamadı."
             };
@@ -643,7 +620,6 @@ public class BorrowService :
             return new OperationResultDto
             {
                 Success = false,
-
                 Message =
                     "Kitap bulunamadı."
             };
@@ -660,18 +636,16 @@ public class BorrowService :
             return new OperationResultDto
             {
                 Success = true,
-
                 Message =
-                    $"Kitap başarıyla iade alındı. Kullanıcıya {writeResult.PenaltyDays} günlük ödünç alma cezası uygulandı."
+                    $"Kitap fiziksel olarak teslim alındı ve iade işlemi tamamlandı. Kullanıcıya {writeResult.PenaltyDays} günlük ödünç alma cezası uygulandı."
             };
         }
 
         return new OperationResultDto
         {
             Success = true,
-
             Message =
-                "Kitap başarıyla iade alındı."
+                "Kitap fiziksel olarak teslim alındı ve iade işlemi başarıyla tamamlandı."
         };
     }
 
@@ -708,6 +682,10 @@ public class BorrowService :
                     DueDate =
                         AsUtc(
                             record.DueDate),
+
+                    ReturnRequestedAt =
+                        AsUtc(
+                            record.ReturnRequestedAt),
 
                     ReturnDate =
                         AsUtc(
@@ -806,9 +784,16 @@ public class BorrowService :
                         AsUtc(
                             record.DueDate),
 
+                    ReturnRequestedAt =
+                        AsUtc(
+                            record.ReturnRequestedAt),
+
                     ReturnDate =
                         AsUtc(
                             record.ReturnDate),
+
+                    ReturnedToAdminUserId =
+                        record.ReturnedToAdminUserId,
 
                     IsReturned =
                         record.IsReturned

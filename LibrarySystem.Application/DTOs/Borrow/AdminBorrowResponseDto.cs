@@ -18,7 +18,11 @@ public class AdminBorrowResponseDto
 
     public DateTime DueDate { get; set; }
 
+    public DateTime? ReturnRequestedAt { get; set; }
+
     public DateTime? ReturnDate { get; set; }
+
+    public string? ReturnedToAdminUserId { get; set; }
 
     public bool IsReturned { get; set; }
 }

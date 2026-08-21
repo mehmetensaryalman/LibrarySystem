@@ -14,6 +14,8 @@ public class BorrowedBookResponseDto
 
     public DateTime DueDate { get; set; }
 
+    public DateTime? ReturnRequestedAt { get; set; }
+
     public DateTime? ReturnDate { get; set; }
 
     public bool IsReturned { get; set; }

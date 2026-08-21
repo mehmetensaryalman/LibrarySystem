@@ -8,13 +8,15 @@ public interface IBorrowService
         string userId,
         int bookId);
 
-    Task<OperationResultDto> ReturnAsync(
-        string userId,
-        int bookId);
+    Task<OperationResultDto>
+        RequestReturnAsync(
+            string userId,
+            int bookId);
 
     Task<OperationResultDto>
         ReturnForAdminAsync(
-            int borrowRecordId);
+            int borrowRecordId,
+            string adminUserId);
 
     Task<List<BorrowedBookResponseDto>>
         GetMyBooksAsync(

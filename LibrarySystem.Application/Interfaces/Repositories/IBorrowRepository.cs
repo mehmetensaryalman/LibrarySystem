@@ -64,6 +64,12 @@ public interface IBorrowRepository
             DateTime processedAt,
             string? rejectionReason);
 
+    Task<ReturnRequestWriteStatus>
+        RequestReturnAsync(
+            string userId,
+            int bookId,
+            DateTime requestDate);
+
     Task<BorrowWriteStatus>
         BorrowBookAsync(
             BorrowRecord borrowRecord);
@@ -72,5 +78,6 @@ public interface IBorrowRepository
         ReturnBookAsync(
             string userId,
             int bookId,
+            string adminUserId,
             DateTime returnDate);
 }

@@ -10,7 +10,8 @@ namespace LibrarySystem.Api.Controllers;
 [ApiController]
 [Route("api")]
 [Authorize]
-public class BorrowController : ControllerBase
+public class BorrowController :
+    ControllerBase
 {
     private readonly
         IBorrowService _borrowService;
@@ -23,7 +24,8 @@ public class BorrowController : ControllerBase
     }
 
     [HttpPost("borrow/{bookId:int}")]
-    [Authorize(Policy = "BorrowerOnly")]
+    [Authorize(
+        Policy = "BorrowerOnly")]
     public async Task<IActionResult>
         Borrow(
             int bookId)
@@ -50,13 +52,16 @@ public class BorrowController : ControllerBase
                 result);
         }
 
-        return Ok(result);
+        return Ok(
+            result);
     }
 
-    [HttpPost("return/{bookId:int}")]
-    [Authorize(Policy = "BorrowerOnly")]
+    [HttpPost(
+        "borrow/{bookId:int}/return-request")]
+    [Authorize(
+        Policy = "BorrowerOnly")]
     public async Task<IActionResult>
-        Return(
+        RequestReturn(
             int bookId)
     {
         var userId =
@@ -71,7 +76,7 @@ public class BorrowController : ControllerBase
 
         var result =
             await _borrowService
-                .ReturnAsync(
+                .RequestReturnAsync(
                     userId,
                     bookId);
 
@@ -81,11 +86,13 @@ public class BorrowController : ControllerBase
                 result);
         }
 
-        return Ok(result);
+        return Ok(
+            result);
     }
 
     [HttpGet("borrow/my-books")]
-    [Authorize(Policy = "BorrowerOnly")]
+    [Authorize(
+        Policy = "BorrowerOnly")]
     public async Task<IActionResult>
         GetMyBooks()
     {
@@ -104,12 +111,14 @@ public class BorrowController : ControllerBase
                 .GetMyBooksAsync(
                     userId);
 
-        return Ok(books);
+        return Ok(
+            books);
     }
 
     [HttpGet(
         "borrow/my-penalty-status")]
-    [Authorize(Policy = "BorrowerOnly")]
+    [Authorize(
+        Policy = "BorrowerOnly")]
     public async Task<IActionResult>
         GetMyPenaltyStatus()
     {
@@ -241,10 +250,21 @@ public class BorrowController : ControllerBase
         ReturnForAdmin(
             int borrowRecordId)
     {
+        var adminUserId =
+            GetUserId();
+
+        if (
+            string.IsNullOrWhiteSpace(
+                adminUserId))
+        {
+            return Unauthorized();
+        }
+
         var result =
             await _borrowService
                 .ReturnForAdminAsync(
-                    borrowRecordId);
+                    borrowRecordId,
+                    adminUserId);
 
         if (!result.Success)
         {

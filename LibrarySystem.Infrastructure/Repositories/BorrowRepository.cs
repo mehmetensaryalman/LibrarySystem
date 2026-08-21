@@ -516,8 +516,7 @@ public class BorrowRepository :
             }
 
             borrowRequest.Status =
-                BorrowRequestStatus
-                    .Approved;
+                BorrowRequestStatus.Approved;
 
             borrowRequest.ProcessedAt =
                 approvalDate;
@@ -540,8 +539,7 @@ public class BorrowRepository :
             return new ApproveBorrowRequestWriteResult
             {
                 Status =
-                    ApproveBorrowRequestWriteStatus
-                        .Success,
+                    ApproveBorrowRequestWriteStatus.Success,
 
                 BorrowRecordId =
                     borrowRecord.Id,
@@ -593,8 +591,7 @@ public class BorrowRepository :
             }
 
             borrowRequest.Status =
-                BorrowRequestStatus
-                    .Rejected;
+                BorrowRequestStatus.Rejected;
 
             borrowRequest.ProcessedAt =
                 processedAt;
@@ -618,8 +615,117 @@ public class BorrowRepository :
                 .CommitAsync();
 
             return
-                RejectBorrowRequestWriteStatus
-                    .Success;
+                RejectBorrowRequestWriteStatus.Success;
+        }
+        catch
+        {
+            await transaction
+                .RollbackAsync();
+
+            throw;
+        }
+    }
+
+    public async Task<ReturnRequestWriteStatus>
+        RequestReturnAsync(
+            string userId,
+            int bookId,
+            DateTime requestDate)
+    {
+        await using var transaction =
+            await _dbContext.Database
+                .BeginTransactionAsync();
+
+        try
+        {
+            await LockUserAsync(
+                userId);
+
+            var activeBorrow =
+                await _dbContext
+                    .BorrowRecords
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(record =>
+                        record.UserId ==
+                            userId &&
+                        record.BookId ==
+                            bookId &&
+                        !record.IsReturned);
+
+            if (activeBorrow is null)
+            {
+                await transaction
+                    .RollbackAsync();
+
+                return
+                    ReturnRequestWriteStatus
+                        .ActiveBorrowNotFound;
+            }
+
+            if (
+                activeBorrow
+                    .ReturnRequestedAt
+                    .HasValue)
+            {
+                await transaction
+                    .RollbackAsync();
+
+                return
+                    ReturnRequestWriteStatus
+                        .AlreadyRequested;
+            }
+
+            var affectedRows =
+                await _dbContext
+                    .BorrowRecords
+                    .Where(record =>
+                        record.Id ==
+                            activeBorrow.Id &&
+                        !record.IsReturned &&
+                        record.ReturnRequestedAt ==
+                            null)
+                    .ExecuteUpdateAsync(
+                        setters =>
+                            setters.SetProperty(
+                                record =>
+                                    record.ReturnRequestedAt,
+                                requestDate));
+
+            if (affectedRows == 0)
+            {
+                var currentBorrow =
+                    await _dbContext
+                        .BorrowRecords
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(record =>
+                            record.Id ==
+                                activeBorrow.Id &&
+                            !record.IsReturned);
+
+                await transaction
+                    .RollbackAsync();
+
+                if (
+                    currentBorrow?
+                        .ReturnRequestedAt
+                        .HasValue ==
+                    true)
+                {
+                    return
+                        ReturnRequestWriteStatus
+                            .AlreadyRequested;
+                }
+
+                return
+                    ReturnRequestWriteStatus
+                        .ActiveBorrowNotFound;
+            }
+
+            await transaction
+                .CommitAsync();
+
+            return
+                ReturnRequestWriteStatus.Success;
         }
         catch
         {
@@ -695,8 +801,7 @@ public class BorrowRepository :
 
             if (
                 activeBorrowCount >=
-                BorrowRules
-                    .MaxActiveBorrowCount)
+                BorrowRules.MaxActiveBorrowCount)
             {
                 await transaction
                     .RollbackAsync();
@@ -760,8 +865,7 @@ public class BorrowRepository :
                 .CommitAsync();
 
             return
-                BorrowWriteStatus
-                    .Success;
+                BorrowWriteStatus.Success;
         }
         catch
         {
@@ -776,6 +880,7 @@ public class BorrowRepository :
         ReturnBookAsync(
             string userId,
             int bookId,
+            string adminUserId,
             DateTime returnDate)
     {
         await using var transaction =
@@ -828,7 +933,11 @@ public class BorrowRepository :
                                 .SetProperty(
                                     record =>
                                         record.ReturnDate,
-                                    returnDate));
+                                    returnDate)
+                                .SetProperty(
+                                    record =>
+                                        record.ReturnedToAdminUserId,
+                                    adminUserId));
 
             if (affectedBorrowRows == 0)
             {
@@ -890,8 +999,7 @@ public class BorrowRepository :
                     Math.Max(
                         1,
                         (int)Math.Ceiling(
-                            overdueDuration
-                                .TotalDays));
+                            overdueDuration.TotalDays));
 
                 var latestActivePenaltyEndDate =
                     await _dbContext
@@ -952,8 +1060,7 @@ public class BorrowRepository :
             return new ReturnBookWriteResult
             {
                 Status =
-                    ReturnWriteStatus
-                        .Success,
+                    ReturnWriteStatus.Success,
 
                 PenaltyDays =
                     penaltyDays,
