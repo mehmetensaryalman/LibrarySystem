@@ -32,6 +32,10 @@ public interface IBorrowService
     Task<List<AdminBorrowRequestResponseDto>>
         GetPendingBorrowRequestsForAdminAsync();
 
+    Task<List<MyBorrowRequestResponseDto>>
+        GetMyPendingBorrowRequestsAsync(
+            string userId);
+
     Task<OperationResultDto>
         ApproveBorrowRequestAsync(
             int borrowRequestId,

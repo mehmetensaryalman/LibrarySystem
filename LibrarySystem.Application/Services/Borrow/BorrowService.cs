@@ -218,6 +218,39 @@ public class BorrowService :
     }
 
     public async Task<
+    List<MyBorrowRequestResponseDto>>
+    GetMyPendingBorrowRequestsAsync(
+        string userId)
+    {
+        var requests =
+            await _borrowRepository
+                .GetPendingBorrowRequestsByUserAsync(
+                    userId);
+
+        return requests
+            .Select(request =>
+                new MyBorrowRequestResponseDto
+                {
+                    BorrowRequestId =
+                        request.Id,
+
+                    BookId =
+                        request.BookId,
+
+                    BookName =
+                        request.Book.Name,
+
+                    Author =
+                        request.Book.Author,
+
+                    RequestedAt =
+                        AsUtc(
+                            request.RequestedAt)
+                })
+            .ToList();
+    }
+
+    public async Task<
         List<AdminBorrowRequestResponseDto>>
         GetPendingBorrowRequestsForAdminAsync()
     {

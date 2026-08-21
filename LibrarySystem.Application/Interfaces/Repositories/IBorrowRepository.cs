@@ -47,6 +47,10 @@ public interface IBorrowRepository
     Task<List<BorrowRequest>>
         GetPendingBorrowRequestsAsync();
 
+    Task<List<BorrowRequest>>
+        GetPendingBorrowRequestsByUserAsync(
+            string userId);
+
     Task<BorrowRequestWriteStatus>
         CreateBorrowRequestAsync(
             BorrowRequest borrowRequest);

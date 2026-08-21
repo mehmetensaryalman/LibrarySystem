@@ -23,7 +23,8 @@ public class BorrowController :
             borrowService;
     }
 
-    [HttpPost("borrow/{bookId:int}")]
+    [HttpPost(
+        "borrow/{bookId:int}")]
     [Authorize(
         Policy = "BorrowerOnly")]
     public async Task<IActionResult>
@@ -90,7 +91,8 @@ public class BorrowController :
             result);
     }
 
-    [HttpGet("borrow/my-books")]
+    [HttpGet(
+        "borrow/my-books")]
     [Authorize(
         Policy = "BorrowerOnly")]
     public async Task<IActionResult>
@@ -113,6 +115,32 @@ public class BorrowController :
 
         return Ok(
             books);
+    }
+
+    [HttpGet(
+        "borrow/my-pending-requests")]
+    [Authorize(
+        Policy = "BorrowerOnly")]
+    public async Task<IActionResult>
+        GetMyPendingBorrowRequests()
+    {
+        var userId =
+            GetUserId();
+
+        if (
+            string.IsNullOrWhiteSpace(
+                userId))
+        {
+            return Unauthorized();
+        }
+
+        var requests =
+            await _borrowService
+                .GetMyPendingBorrowRequestsAsync(
+                    userId);
+
+        return Ok(
+            requests);
     }
 
     [HttpGet(
@@ -141,7 +169,8 @@ public class BorrowController :
             penaltyStatus);
     }
 
-    [HttpGet("admin/borrows")]
+    [HttpGet(
+        "admin/borrows")]
     [Authorize(
         Roles = RoleNames.Admin)]
     public async Task<IActionResult>

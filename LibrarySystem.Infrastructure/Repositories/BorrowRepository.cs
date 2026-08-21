@@ -227,6 +227,28 @@ public class BorrowRepository :
             .ToListAsync();
     }
 
+    public async Task<List<BorrowRequest>>
+        GetPendingBorrowRequestsByUserAsync(
+            string userId)
+    {
+        return await _dbContext
+            .BorrowRequests
+            .AsNoTracking()
+            .Include(request =>
+                request.Book)
+            .Where(request =>
+                request.UserId ==
+                    userId &&
+                request.Status ==
+                    BorrowRequestStatus
+                        .Pending)
+            .OrderByDescending(request =>
+                request.RequestedAt)
+            .ThenByDescending(request =>
+                request.Id)
+            .ToListAsync();
+    }
+
     public async Task<BorrowRequestWriteStatus>
         CreateBorrowRequestAsync(
             BorrowRequest borrowRequest)
@@ -539,7 +561,8 @@ public class BorrowRepository :
             return new ApproveBorrowRequestWriteResult
             {
                 Status =
-                    ApproveBorrowRequestWriteStatus.Success,
+                    ApproveBorrowRequestWriteStatus
+                        .Success,
 
                 BorrowRecordId =
                     borrowRecord.Id,
@@ -615,7 +638,8 @@ public class BorrowRepository :
                 .CommitAsync();
 
             return
-                RejectBorrowRequestWriteStatus.Success;
+                RejectBorrowRequestWriteStatus
+                    .Success;
         }
         catch
         {
@@ -725,7 +749,8 @@ public class BorrowRepository :
                 .CommitAsync();
 
             return
-                ReturnRequestWriteStatus.Success;
+                ReturnRequestWriteStatus
+                    .Success;
         }
         catch
         {
@@ -801,7 +826,8 @@ public class BorrowRepository :
 
             if (
                 activeBorrowCount >=
-                BorrowRules.MaxActiveBorrowCount)
+                BorrowRules
+                    .MaxActiveBorrowCount)
             {
                 await transaction
                     .RollbackAsync();
@@ -865,7 +891,8 @@ public class BorrowRepository :
                 .CommitAsync();
 
             return
-                BorrowWriteStatus.Success;
+                BorrowWriteStatus
+                    .Success;
         }
         catch
         {
@@ -999,7 +1026,8 @@ public class BorrowRepository :
                     Math.Max(
                         1,
                         (int)Math.Ceiling(
-                            overdueDuration.TotalDays));
+                            overdueDuration
+                                .TotalDays));
 
                 var latestActivePenaltyEndDate =
                     await _dbContext
@@ -1060,7 +1088,8 @@ public class BorrowRepository :
             return new ReturnBookWriteResult
             {
                 Status =
-                    ReturnWriteStatus.Success,
+                    ReturnWriteStatus
+                        .Success,
 
                 PenaltyDays =
                     penaltyDays,
