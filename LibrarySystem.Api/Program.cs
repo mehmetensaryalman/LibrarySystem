@@ -6,10 +6,12 @@ using LibrarySystem.Application.Common.Constants;
 using LibrarySystem.Application.Interfaces.Auth;
 using LibrarySystem.Application.Interfaces.Books;
 using LibrarySystem.Application.Interfaces.Borrow;
+using LibrarySystem.Application.Interfaces.Notifications;
 using LibrarySystem.Application.Interfaces.Realtime;
 using LibrarySystem.Application.Interfaces.Repositories;
 using LibrarySystem.Application.Services.Books;
 using LibrarySystem.Application.Services.Borrow;
+using LibrarySystem.Application.Services.Notifications;
 using LibrarySystem.Infrastructure.Identity;
 using LibrarySystem.Infrastructure.Persistence;
 using LibrarySystem.Infrastructure.Repositories;
@@ -122,6 +124,14 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<
     IBorrowService,
     BorrowService>();
+
+builder.Services.AddScoped<
+    INotificationRepository,
+    NotificationRepository>();
+
+builder.Services.AddScoped<
+    INotificationService,
+    NotificationService>();
 
 builder.Services.AddScoped<
     IRealtimeNotifier,

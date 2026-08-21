@@ -8,6 +8,8 @@ public interface IRealtimeNotifier
 
     Task NotifyBorrowsChangedAsync();
 
+    Task NotifyAdminNotificationsChangedAsync();
+
     Task NotifyAdminBorrowNotificationAsync(
         AdminBorrowNotificationDto notification);
 }

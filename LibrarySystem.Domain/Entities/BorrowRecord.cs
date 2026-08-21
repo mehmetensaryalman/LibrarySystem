@@ -13,12 +13,35 @@ public class BorrowRecord
 
     public DateTime DueDate { get; set; }
 
-    public DateTime? ReturnDate { get; set; }
+    public DateTime? ReturnRequestedAt
+    {
+        get;
+        set;
+    }
 
-    public bool IsReturned { get; set; }
+    public DateTime? ReturnDate
+    {
+        get;
+        set;
+    }
 
-    public Book Book { get; set; }
-        = null!;
+    public string? ReturnedToAdminUserId
+    {
+        get;
+        set;
+    }
+
+    public bool IsReturned
+    {
+        get;
+        set;
+    }
+
+    public Book Book
+    {
+        get;
+        set;
+    } = null!;
 
     public BorrowPenalty? Penalty
     {

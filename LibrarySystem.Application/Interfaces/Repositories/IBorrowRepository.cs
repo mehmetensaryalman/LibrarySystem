@@ -35,6 +35,35 @@ public interface IBorrowRepository
         GetUserEmailsAsync(
             IEnumerable<string> userIds);
 
+    Task<BorrowRequest?>
+        GetPendingBorrowRequestAsync(
+            string userId,
+            int bookId);
+
+    Task<BorrowRequest?>
+        GetPendingBorrowRequestByIdAsync(
+            int borrowRequestId);
+
+    Task<List<BorrowRequest>>
+        GetPendingBorrowRequestsAsync();
+
+    Task<BorrowRequestWriteStatus>
+        CreateBorrowRequestAsync(
+            BorrowRequest borrowRequest);
+
+    Task<ApproveBorrowRequestWriteResult>
+        ApproveBorrowRequestAsync(
+            int borrowRequestId,
+            string adminUserId,
+            DateTime approvalDate);
+
+    Task<RejectBorrowRequestWriteStatus>
+        RejectBorrowRequestAsync(
+            int borrowRequestId,
+            string adminUserId,
+            DateTime processedAt,
+            string? rejectionReason);
+
     Task<BorrowWriteStatus>
         BorrowBookAsync(
             BorrowRecord borrowRecord);

@@ -2,6 +2,7 @@
 using LibrarySystem.Application.Common.Models;
 using LibrarySystem.Application.Interfaces.Repositories;
 using LibrarySystem.Domain.Entities;
+using LibrarySystem.Domain.Enums;
 using LibrarySystem.Infrastructure.Persistence;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -168,6 +169,465 @@ public class BorrowRepository :
                     user.Email ??
                     user.UserName ??
                     "Bilinmiyor");
+    }
+
+    public async Task<BorrowRequest?>
+        GetPendingBorrowRequestAsync(
+            string userId,
+            int bookId)
+    {
+        return await _dbContext
+            .BorrowRequests
+            .AsNoTracking()
+            .Include(request =>
+                request.Book)
+            .FirstOrDefaultAsync(request =>
+                request.UserId ==
+                    userId &&
+                request.BookId ==
+                    bookId &&
+                request.Status ==
+                    BorrowRequestStatus
+                        .Pending);
+    }
+
+    public async Task<BorrowRequest?>
+        GetPendingBorrowRequestByIdAsync(
+            int borrowRequestId)
+    {
+        return await _dbContext
+            .BorrowRequests
+            .AsNoTracking()
+            .Include(request =>
+                request.Book)
+            .FirstOrDefaultAsync(request =>
+                request.Id ==
+                    borrowRequestId &&
+                request.Status ==
+                    BorrowRequestStatus
+                        .Pending);
+    }
+
+    public async Task<List<BorrowRequest>>
+        GetPendingBorrowRequestsAsync()
+    {
+        return await _dbContext
+            .BorrowRequests
+            .AsNoTracking()
+            .Include(request =>
+                request.Book)
+            .Where(request =>
+                request.Status ==
+                    BorrowRequestStatus
+                        .Pending)
+            .OrderBy(request =>
+                request.RequestedAt)
+            .ThenBy(request =>
+                request.Id)
+            .ToListAsync();
+    }
+
+    public async Task<BorrowRequestWriteStatus>
+        CreateBorrowRequestAsync(
+            BorrowRequest borrowRequest)
+    {
+        await _dbContext
+            .BorrowRequests
+            .AddAsync(
+                borrowRequest);
+
+        try
+        {
+            await _dbContext
+                .SaveChangesAsync();
+
+            return
+                BorrowRequestWriteStatus
+                    .Success;
+        }
+        catch (
+            DbUpdateException exception)
+            when (
+                IsDuplicatePendingBorrowRequestViolation(
+                    exception))
+        {
+            _dbContext
+                .Entry(
+                    borrowRequest)
+                .State =
+                    EntityState.Detached;
+
+            return
+                BorrowRequestWriteStatus
+                    .DuplicatePendingRequest;
+        }
+    }
+
+    public async Task<ApproveBorrowRequestWriteResult>
+        ApproveBorrowRequestAsync(
+            int borrowRequestId,
+            string adminUserId,
+            DateTime approvalDate)
+    {
+        await using var transaction =
+            await _dbContext.Database
+                .BeginTransactionAsync();
+
+        try
+        {
+            var borrowRequest =
+                await LockBorrowRequestAsync(
+                    borrowRequestId);
+
+            if (
+                borrowRequest is null ||
+                borrowRequest.Status !=
+                    BorrowRequestStatus.Pending)
+            {
+                await transaction
+                    .RollbackAsync();
+
+                return new ApproveBorrowRequestWriteResult
+                {
+                    Status =
+                        ApproveBorrowRequestWriteStatus
+                            .PendingRequestNotFound
+                };
+            }
+
+            await LockUserAsync(
+                borrowRequest.UserId);
+
+            var hasOverdueBorrow =
+                await _dbContext
+                    .BorrowRecords
+                    .AsNoTracking()
+                    .AnyAsync(record =>
+                        record.UserId ==
+                            borrowRequest.UserId &&
+                        !record.IsReturned &&
+                        record.DueDate <
+                            approvalDate);
+
+            if (hasOverdueBorrow)
+            {
+                await transaction
+                    .RollbackAsync();
+
+                return new ApproveBorrowRequestWriteResult
+                {
+                    Status =
+                        ApproveBorrowRequestWriteStatus
+                            .OverdueActiveBorrow,
+
+                    UserId =
+                        borrowRequest.UserId,
+
+                    BookId =
+                        borrowRequest.BookId
+                };
+            }
+
+            var hasActivePenalty =
+                await _dbContext
+                    .BorrowPenalties
+                    .AsNoTracking()
+                    .AnyAsync(penalty =>
+                        penalty.UserId ==
+                            borrowRequest.UserId &&
+                        penalty.EndDate >
+                            approvalDate);
+
+            if (hasActivePenalty)
+            {
+                await transaction
+                    .RollbackAsync();
+
+                return new ApproveBorrowRequestWriteResult
+                {
+                    Status =
+                        ApproveBorrowRequestWriteStatus
+                            .ActivePenalty,
+
+                    UserId =
+                        borrowRequest.UserId,
+
+                    BookId =
+                        borrowRequest.BookId
+                };
+            }
+
+            var hasDuplicateActiveBorrow =
+                await _dbContext
+                    .BorrowRecords
+                    .AsNoTracking()
+                    .AnyAsync(record =>
+                        record.UserId ==
+                            borrowRequest.UserId &&
+                        record.BookId ==
+                            borrowRequest.BookId &&
+                        !record.IsReturned);
+
+            if (hasDuplicateActiveBorrow)
+            {
+                await transaction
+                    .RollbackAsync();
+
+                return new ApproveBorrowRequestWriteResult
+                {
+                    Status =
+                        ApproveBorrowRequestWriteStatus
+                            .DuplicateActiveBorrow,
+
+                    UserId =
+                        borrowRequest.UserId,
+
+                    BookId =
+                        borrowRequest.BookId
+                };
+            }
+
+            var activeBorrowCount =
+                await _dbContext
+                    .BorrowRecords
+                    .AsNoTracking()
+                    .CountAsync(record =>
+                        record.UserId ==
+                            borrowRequest.UserId &&
+                        !record.IsReturned);
+
+            if (
+                activeBorrowCount >=
+                BorrowRules
+                    .MaxActiveBorrowCount)
+            {
+                await transaction
+                    .RollbackAsync();
+
+                return new ApproveBorrowRequestWriteResult
+                {
+                    Status =
+                        ApproveBorrowRequestWriteStatus
+                            .ActiveBorrowLimitReached,
+
+                    UserId =
+                        borrowRequest.UserId,
+
+                    BookId =
+                        borrowRequest.BookId
+                };
+            }
+
+            var affectedBookRows =
+                await _dbContext
+                    .Books
+                    .Where(book =>
+                        book.Id ==
+                            borrowRequest.BookId &&
+                        !book.IsArchived &&
+                        book.Stock > 0)
+                    .ExecuteUpdateAsync(
+                        setters =>
+                            setters.SetProperty(
+                                book =>
+                                    book.Stock,
+
+                                book =>
+                                    book.Stock - 1));
+
+            if (affectedBookRows == 0)
+            {
+                await transaction
+                    .RollbackAsync();
+
+                return new ApproveBorrowRequestWriteResult
+                {
+                    Status =
+                        ApproveBorrowRequestWriteStatus
+                            .BookUnavailable,
+
+                    UserId =
+                        borrowRequest.UserId,
+
+                    BookId =
+                        borrowRequest.BookId
+                };
+            }
+
+            var borrowRecord =
+                new BorrowRecord
+                {
+                    UserId =
+                        borrowRequest.UserId,
+
+                    BookId =
+                        borrowRequest.BookId,
+
+                    BorrowDate =
+                        approvalDate,
+
+                    DueDate =
+                        approvalDate.AddDays(7),
+
+                    ReturnRequestedAt =
+                        null,
+
+                    ReturnDate =
+                        null,
+
+                    ReturnedToAdminUserId =
+                        null,
+
+                    IsReturned =
+                        false
+                };
+
+            await _dbContext
+                .BorrowRecords
+                .AddAsync(
+                    borrowRecord);
+
+            try
+            {
+                await _dbContext
+                    .SaveChangesAsync();
+            }
+            catch (
+                DbUpdateException exception)
+                when (
+                    IsDuplicateActiveBorrowViolation(
+                        exception))
+            {
+                await transaction
+                    .RollbackAsync();
+
+                return new ApproveBorrowRequestWriteResult
+                {
+                    Status =
+                        ApproveBorrowRequestWriteStatus
+                            .DuplicateActiveBorrow,
+
+                    UserId =
+                        borrowRequest.UserId,
+
+                    BookId =
+                        borrowRequest.BookId
+                };
+            }
+
+            borrowRequest.Status =
+                BorrowRequestStatus
+                    .Approved;
+
+            borrowRequest.ProcessedAt =
+                approvalDate;
+
+            borrowRequest.ProcessedByAdminUserId =
+                adminUserId;
+
+            borrowRequest.BorrowRecordId =
+                borrowRecord.Id;
+
+            borrowRequest.RejectionReason =
+                null;
+
+            await _dbContext
+                .SaveChangesAsync();
+
+            await transaction
+                .CommitAsync();
+
+            return new ApproveBorrowRequestWriteResult
+            {
+                Status =
+                    ApproveBorrowRequestWriteStatus
+                        .Success,
+
+                BorrowRecordId =
+                    borrowRecord.Id,
+
+                UserId =
+                    borrowRequest.UserId,
+
+                BookId =
+                    borrowRequest.BookId
+            };
+        }
+        catch
+        {
+            await transaction
+                .RollbackAsync();
+
+            throw;
+        }
+    }
+
+    public async Task<RejectBorrowRequestWriteStatus>
+        RejectBorrowRequestAsync(
+            int borrowRequestId,
+            string adminUserId,
+            DateTime processedAt,
+            string? rejectionReason)
+    {
+        await using var transaction =
+            await _dbContext.Database
+                .BeginTransactionAsync();
+
+        try
+        {
+            var borrowRequest =
+                await LockBorrowRequestAsync(
+                    borrowRequestId);
+
+            if (
+                borrowRequest is null ||
+                borrowRequest.Status !=
+                    BorrowRequestStatus.Pending)
+            {
+                await transaction
+                    .RollbackAsync();
+
+                return
+                    RejectBorrowRequestWriteStatus
+                        .PendingRequestNotFound;
+            }
+
+            borrowRequest.Status =
+                BorrowRequestStatus
+                    .Rejected;
+
+            borrowRequest.ProcessedAt =
+                processedAt;
+
+            borrowRequest.ProcessedByAdminUserId =
+                adminUserId;
+
+            borrowRequest.BorrowRecordId =
+                null;
+
+            borrowRequest.RejectionReason =
+                string.IsNullOrWhiteSpace(
+                    rejectionReason)
+                    ? null
+                    : rejectionReason.Trim();
+
+            await _dbContext
+                .SaveChangesAsync();
+
+            await transaction
+                .CommitAsync();
+
+            return
+                RejectBorrowRequestWriteStatus
+                    .Success;
+        }
+        catch
+        {
+            await transaction
+                .RollbackAsync();
+
+            throw;
+        }
     }
 
     public async Task<BorrowWriteStatus>
@@ -514,6 +974,22 @@ public class BorrowRepository :
         }
     }
 
+    private async Task<BorrowRequest?>
+        LockBorrowRequestAsync(
+            int borrowRequestId)
+    {
+        return await _dbContext
+            .BorrowRequests
+            .FromSqlInterpolated(
+                $"""
+                    SELECT *
+                    FROM [BorrowRequests]
+                    WITH (UPDLOCK, HOLDLOCK)
+                    WHERE [Id] = {borrowRequestId}
+                """)
+            .FirstOrDefaultAsync();
+    }
+
     private async Task
         LockUserAsync(
             string userId)
@@ -522,10 +998,10 @@ public class BorrowRepository :
             await _dbContext.Users
                 .FromSqlInterpolated(
                     $"""
-                    SELECT *
-                    FROM [AspNetUsers]
-                    WITH (UPDLOCK, HOLDLOCK)
-                    WHERE [Id] = {userId}
+                        SELECT *
+                        FROM [AspNetUsers]
+                        WITH (UPDLOCK, HOLDLOCK)
+                        WHERE [Id] = {userId}
                     """)
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
@@ -565,6 +1041,42 @@ public class BorrowRepository :
             if (
                 isDuplicateError &&
                 isActiveBorrowIndex)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool
+        IsDuplicatePendingBorrowRequestViolation(
+            DbUpdateException exception)
+    {
+        if (
+            exception.InnerException
+            is not SqlException sqlException)
+        {
+            return false;
+        }
+
+        foreach (
+            SqlError error
+            in sqlException.Errors)
+        {
+            var isDuplicateError =
+                error.Number == 2601 ||
+                error.Number == 2627;
+
+            var isPendingRequestIndex =
+                error.Message.Contains(
+                    "UX_BorrowRequests_UserId_BookId_Pending",
+                    StringComparison
+                        .OrdinalIgnoreCase);
+
+            if (
+                isDuplicateError &&
+                isPendingRequestIndex)
             {
                 return true;
             }

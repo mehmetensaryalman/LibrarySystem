@@ -1,5 +1,6 @@
 ﻿using System.Security.Claims;
 using LibrarySystem.Application.Common.Constants;
+using LibrarySystem.Application.DTOs.Borrow;
 using LibrarySystem.Application.Interfaces.Borrow;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -141,7 +142,95 @@ public class BorrowController : ControllerBase
             await _borrowService
                 .GetAllBorrowsForAdminAsync();
 
-        return Ok(borrows);
+        return Ok(
+            borrows);
+    }
+
+    [HttpGet(
+        "admin/borrow-requests")]
+    [Authorize(
+        Roles = RoleNames.Admin)]
+    public async Task<IActionResult>
+        GetPendingBorrowRequestsForAdmin()
+    {
+        var requests =
+            await _borrowService
+                .GetPendingBorrowRequestsForAdminAsync();
+
+        return Ok(
+            requests);
+    }
+
+    [HttpPut(
+        "admin/borrow-requests/{borrowRequestId:int}/approve")]
+    [Authorize(
+        Roles = RoleNames.Admin)]
+    public async Task<IActionResult>
+        ApproveBorrowRequest(
+            int borrowRequestId)
+    {
+        var adminUserId =
+            GetUserId();
+
+        if (
+            string.IsNullOrWhiteSpace(
+                adminUserId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _borrowService
+                .ApproveBorrowRequestAsync(
+                    borrowRequestId,
+                    adminUserId);
+
+        if (!result.Success)
+        {
+            return BadRequest(
+                result);
+        }
+
+        return Ok(
+            result);
+    }
+
+    [HttpPut(
+        "admin/borrow-requests/{borrowRequestId:int}/reject")]
+    [Authorize(
+        Roles = RoleNames.Admin)]
+    public async Task<IActionResult>
+        RejectBorrowRequest(
+            int borrowRequestId,
+            [FromBody]
+            RejectBorrowRequestRequestDto?
+                request)
+    {
+        var adminUserId =
+            GetUserId();
+
+        if (
+            string.IsNullOrWhiteSpace(
+                adminUserId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _borrowService
+                .RejectBorrowRequestAsync(
+                    borrowRequestId,
+                    adminUserId,
+                    request?.Reason);
+
+        if (!result.Success)
+        {
+            return BadRequest(
+                result);
+        }
+
+        return Ok(
+            result);
     }
 
     [HttpPost(
@@ -163,7 +252,8 @@ public class BorrowController : ControllerBase
                 result);
         }
 
-        return Ok(result);
+        return Ok(
+            result);
     }
 
     private string? GetUserId()

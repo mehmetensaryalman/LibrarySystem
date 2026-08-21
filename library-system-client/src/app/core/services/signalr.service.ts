@@ -35,7 +35,10 @@ export class SignalRService {
   private readonly borrowsChangedSubject =
     new Subject<void>();
 
- private readonly adminBorrowNotificationSubject =
+  private readonly adminNotificationsChangedSubject =
+  new Subject<void>();
+
+private readonly adminBorrowNotificationSubject =
   new Subject<AdminBorrowNotification>();
 
   readonly booksChanged$: Observable<void> =
@@ -45,6 +48,11 @@ export class SignalRService {
   readonly borrowsChanged$: Observable<void> =
     this.borrowsChangedSubject
       .asObservable();
+
+  readonly adminNotificationsChanged$:
+    Observable<void> =
+      this.adminNotificationsChangedSubject
+        .asObservable();
 
   readonly adminBorrowNotification$:
     Observable<AdminBorrowNotification> =
@@ -166,6 +174,18 @@ export class SignalRService {
         );
 
         this.borrowsChangedSubject
+          .next();
+      }
+    );
+
+    this.hubConnection.on(
+      'AdminNotificationsChanged',
+      () => {
+        console.log(
+          'SignalR: AdminNotificationsChanged alındı.'
+        );
+
+        this.adminNotificationsChangedSubject
           .next();
       }
     );

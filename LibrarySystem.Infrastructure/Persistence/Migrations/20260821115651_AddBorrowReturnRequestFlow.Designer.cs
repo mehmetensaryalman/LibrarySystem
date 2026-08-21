@@ -4,6 +4,7 @@ using LibrarySystem.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LibrarySystem.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(LibraryDbContext))]
-    partial class LibraryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260821115651_AddBorrowReturnRequestFlow")]
+    partial class AddBorrowReturnRequestFlow
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -150,64 +153,6 @@ namespace LibrarySystem.Infrastructure.Persistence.Migrations
                         .HasFilter("[IsReturned] = 0");
 
                     b.ToTable("BorrowRecords", (string)null);
-                });
-
-            modelBuilder.Entity("LibrarySystem.Domain.Entities.BorrowRequest", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("BookId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("BorrowRecordId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("ProcessedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ProcessedByAdminUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("RejectionReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime>("RequestedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BookId");
-
-                    b.HasIndex("BorrowRecordId")
-                        .IsUnique()
-                        .HasDatabaseName("UX_BorrowRequests_BorrowRecordId")
-                        .HasFilter("[BorrowRecordId] IS NOT NULL");
-
-                    b.HasIndex("ProcessedByAdminUserId");
-
-                    b.HasIndex("Status", "RequestedAt")
-                        .HasDatabaseName("IX_BorrowRequests_Status_RequestedAt");
-
-                    b.HasIndex("UserId", "BookId")
-                        .IsUnique()
-                        .HasDatabaseName("UX_BorrowRequests_UserId_BookId_Pending")
-                        .HasFilter("[Status] = 1");
-
-                    b.ToTable("BorrowRequests", (string)null);
                 });
 
             modelBuilder.Entity("LibrarySystem.Domain.Entities.Notification", b =>
@@ -495,35 +440,6 @@ namespace LibrarySystem.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Book");
-                });
-
-            modelBuilder.Entity("LibrarySystem.Domain.Entities.BorrowRequest", b =>
-                {
-                    b.HasOne("LibrarySystem.Domain.Entities.Book", "Book")
-                        .WithMany()
-                        .HasForeignKey("BookId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("LibrarySystem.Domain.Entities.BorrowRecord", "BorrowRecord")
-                        .WithMany()
-                        .HasForeignKey("BorrowRecordId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("LibrarySystem.Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("ProcessedByAdminUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("LibrarySystem.Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Book");
-
-                    b.Navigation("BorrowRecord");
                 });
 
             modelBuilder.Entity("LibrarySystem.Domain.Entities.Notification", b =>

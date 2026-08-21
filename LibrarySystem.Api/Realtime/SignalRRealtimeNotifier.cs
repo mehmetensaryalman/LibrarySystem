@@ -41,6 +41,16 @@ public class SignalRRealtimeNotifier
     }
 
     public async Task
+        NotifyAdminNotificationsChangedAsync()
+    {
+        await _hubContext
+            .Clients
+            .Group(
+                LibraryHub.AdminGroupName)
+            .AdminNotificationsChanged();
+    }
+
+    public async Task
         NotifyAdminBorrowNotificationAsync(
             AdminBorrowNotificationDto notification)
     {

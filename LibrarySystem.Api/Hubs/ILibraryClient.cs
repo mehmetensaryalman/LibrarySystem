@@ -8,6 +8,8 @@ public interface ILibraryClient
 
     Task BorrowsChanged();
 
+    Task AdminNotificationsChanged();
+
     Task AdminBorrowNotification(
         AdminBorrowNotificationDto notification);
 }

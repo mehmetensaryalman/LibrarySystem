@@ -1,17 +1,29 @@
-import { Component } from '@angular/core';
-import { Router } from '@angular/router';
+import {
+  Component
+} from '@angular/core';
 
-import { ButtonModule } from 'primeng/button';
+import {
+  Router
+} from '@angular/router';
+
+import {
+  ButtonModule
+} from 'primeng/button';
 
 import {
   AuthService
 } from '../../../core/services/auth.service';
 
+import {
+  AdminNotificationsComponent
+} from '../../../shared/admin-notifications/admin-notifications.component';
+
 @Component({
   selector: 'app-admin-dashboard',
 
   imports: [
-    ButtonModule
+    ButtonModule,
+    AdminNotificationsComponent
   ],
 
   templateUrl:

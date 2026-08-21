@@ -1,0 +1,165 @@
+<div class="notification-wrapper">
+
+  <button
+    type="button"
+    class="notification-trigger"
+    aria-label="Bildirimleri aç"
+    [attr.aria-expanded]="panelOpen()"
+    (click)="togglePanel()"
+  >
+
+    <span
+      class="notification-icon"
+      aria-hidden="true"
+    >
+      🔔
+    </span>
+
+    <span class="notification-label">
+      Bildirimler
+    </span>
+
+    @if (unreadCount() > 0) {
+      <span class="notification-badge">
+        {{ badgeText() }}
+      </span>
+    }
+
+  </button>
+
+
+  @if (panelOpen()) {
+
+    <section
+      class="notification-panel"
+      aria-label="Bildirimler"
+    >
+
+      <div class="notification-panel-header">
+
+        <div>
+          <h3>Bildirimler</h3>
+
+          <p>
+            @if (unreadCount() > 0) {
+              {{ unreadCount() }}
+              okunmamış bildirim
+            } @else {
+              Yeni bildiriminiz yok
+            }
+          </p>
+        </div>
+
+        @if (unreadCount() > 0) {
+          <button
+            type="button"
+            class="mark-all-button"
+            (click)="markAllAsRead()"
+          >
+            Tümünü okundu yap
+          </button>
+        }
+
+      </div>
+
+
+      <div class="notification-content">
+
+        @if (loading()) {
+
+          <div class="notification-state">
+            Bildirimler yükleniyor...
+          </div>
+
+        } @else if (loadError()) {
+
+          <div
+            class="notification-state notification-state-error"
+          >
+            {{ loadError() }}
+          </div>
+
+        } @else if (
+          notifications().length === 0
+        ) {
+
+          <div class="notification-empty">
+
+            <span
+              class="notification-empty-icon"
+              aria-hidden="true"
+            >
+              🔔
+            </span>
+
+            <strong>
+              Henüz bildirim yok
+            </strong>
+
+            <span>
+              Yeni işlemler burada
+              görüntülenecek.
+            </span>
+
+          </div>
+
+        } @else {
+
+          @for (
+            notification of notifications();
+            track notification.id
+          ) {
+
+            <button
+              type="button"
+              class="notification-item"
+              [class.notification-item-unread]="
+                !notification.isRead
+              "
+              (click)="markAsRead(notification)"
+            >
+
+              <span
+                class="notification-status"
+                [class.notification-status-read]="
+                  notification.isRead
+                "
+              ></span>
+
+              <span class="notification-body">
+
+                <span class="notification-title-row">
+
+                  <strong>
+                    {{ notification.title }}
+                  </strong>
+
+                  <span class="notification-time">
+                    {{
+                      formatNotificationTime(
+                        notification.createdAt
+                      )
+                    }}
+                  </span>
+
+                </span>
+
+                <span class="notification-message">
+                  {{ notification.message }}
+                </span>
+
+              </span>
+
+            </button>
+
+          }
+
+        }
+
+      </div>
+
+    </section>
+
+  }
+
+</div>
