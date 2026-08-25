@@ -16,15 +16,24 @@ public class BookService : IBookService
     private readonly
         IRealtimeNotifier _realtimeNotifier;
 
+    private readonly
+        IBookMetadataProvider
+            _bookMetadataProvider;
+
     public BookService(
         IBookRepository bookRepository,
-        IRealtimeNotifier realtimeNotifier)
+        IRealtimeNotifier realtimeNotifier,
+        IBookMetadataProvider
+            bookMetadataProvider)
     {
         _bookRepository =
             bookRepository;
 
         _realtimeNotifier =
             realtimeNotifier;
+
+        _bookMetadataProvider =
+            bookMetadataProvider;
     }
 
     public async Task<List<BookResponseDto>>
@@ -91,6 +100,64 @@ public class BookService : IBookService
 
             TotalCount =
                 result.TotalCount
+        };
+    }
+
+    public async Task<BookPreviewResponseDto?>
+        GetPreviewAsync(
+            int id,
+            CancellationToken
+                cancellationToken = default)
+    {
+        var book =
+            await _bookRepository
+                .GetByIdAsync(id);
+
+        if (book is null)
+        {
+            book =
+                await _bookRepository
+                    .GetArchivedByIdAsync(
+                        id);
+        }
+
+        if (book is null)
+        {
+            return null;
+        }
+
+        var metadata =
+            await _bookMetadataProvider
+                .GetMetadataAsync(
+                    book.Name,
+                    book.Author,
+                    cancellationToken);
+
+        return new BookPreviewResponseDto
+        {
+            Id = book.Id,
+            Name = book.Name,
+            Author = book.Author,
+
+            CoverImageUrl =
+                metadata?.CoverImageUrl,
+
+            PageCount =
+                metadata?.PageCount,
+
+            Summary =
+                metadata?.Summary,
+
+            InfoUrl =
+                metadata?.InfoUrl,
+
+            Source =
+                metadata is null
+                    ? null
+                    : "Google Books",
+
+            MetadataFound =
+                metadata is not null
         };
     }
 

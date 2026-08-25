@@ -12,7 +12,8 @@ import {
 
 import {
   filter,
-  Subscription
+  Subscription,
+  switchMap
 } from 'rxjs';
 
 import {
@@ -24,12 +25,16 @@ import {
 } from 'primeng/toast';
 
 import {
-  AdminBorrowNotification
-} from './core/models/borrow.models';
+  AdminNotification
+} from './core/models/notification.models';
 
 import {
   AuthService
 } from './core/services/auth.service';
+
+import {
+  NotificationService
+} from './core/services/notification.service';
 
 import {
   SignalRService
@@ -56,11 +61,22 @@ import {
 export class AppComponent
   implements OnInit, OnDestroy {
 
-  private adminBorrowNotificationSubscription:
+  private adminNotificationsChangedSubscription:
+    Subscription | null = null;
+
+  private notificationBaselineSubscription:
     Subscription | null = null;
 
   private routerSubscription:
     Subscription | null = null;
+
+  private logoutSubscription:
+    Subscription | null = null;
+
+  private lastKnownAdminNotificationId = 0;
+
+  private adminNotificationToastInitialized =
+    false;
 
   constructor(
     private readonly router:
@@ -68,6 +84,9 @@ export class AppComponent
 
     private readonly authService:
       AuthService,
+
+    private readonly notificationService:
+      NotificationService,
 
     private readonly signalRService:
       SignalRService,
@@ -78,14 +97,7 @@ export class AppComponent
   }
 
   ngOnInit(): void {
-    this.adminBorrowNotificationSubscription =
-      this.signalRService
-        .adminBorrowNotification$
-        .subscribe(notification => {
-          this.showAdminBorrowNotification(
-            notification
-          );
-        });
+    this.setupAdminNotificationToast();
 
     this.routerSubscription =
       this.router.events
@@ -99,8 +111,17 @@ export class AppComponent
           )
         )
         .subscribe(() => {
+          this.setupAdminNotificationToast();
+
           void this.signalRService
             .startConnection();
+        });
+
+    this.logoutSubscription =
+      this.authService
+        .logout$
+        .subscribe(() => {
+          this.resetAdminNotificationToast();
         });
 
     void this.signalRService
@@ -108,51 +129,218 @@ export class AppComponent
   }
 
   ngOnDestroy(): void {
-    this.adminBorrowNotificationSubscription
+    this.adminNotificationsChangedSubscription
+      ?.unsubscribe();
+
+    this.notificationBaselineSubscription
       ?.unsubscribe();
 
     this.routerSubscription
       ?.unsubscribe();
+
+    this.logoutSubscription
+      ?.unsubscribe();
   }
 
-  private showAdminBorrowNotification(
-    notification:
-      AdminBorrowNotification
-  ): void {
+  private setupAdminNotificationToast():
+    void {
+
     if (
-      !this.authService
-        .isAdmin()
+      !this.authService.isAdmin() ||
+      this.adminNotificationToastInitialized ||
+      this.notificationBaselineSubscription !==
+        null
     ) {
       return;
     }
 
-    const formattedDate =
-      new Intl.DateTimeFormat(
-        'tr-TR',
-        {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        }
-      )
-        .format(
-          new Date(
-            notification.borrowDate
+    this.notificationBaselineSubscription =
+      this.notificationService
+        .getSummary()
+        .subscribe({
+          next: summary => {
+            const latestNotification =
+              this.getLatestNotification(
+                summary.notifications
+              );
+
+            this.lastKnownAdminNotificationId =
+              latestNotification?.id ?? 0;
+
+            this.subscribeToAdminNotificationChanges();
+
+            this.adminNotificationToastInitialized =
+              true;
+          },
+
+          error: error => {
+            console.error(
+              'Toast bildirim başlangıç bilgisi alınamadı:',
+              error
+            );
+
+            this.lastKnownAdminNotificationId =
+              0;
+
+            this.subscribeToAdminNotificationChanges();
+
+            this.adminNotificationToastInitialized =
+              true;
+
+            this.notificationBaselineSubscription =
+              null;
+          },
+
+          complete: () => {
+            this.notificationBaselineSubscription =
+              null;
+          }
+        });
+  }
+
+  private subscribeToAdminNotificationChanges():
+    void {
+
+    if (
+      this.adminNotificationsChangedSubscription !==
+      null
+    ) {
+      return;
+    }
+
+    this.adminNotificationsChangedSubscription =
+      this.signalRService
+        .adminNotificationsChanged$
+        .pipe(
+          switchMap(() =>
+            this.notificationService
+              .getSummary()
           )
-        );
+        )
+        .subscribe({
+          next: summary => {
+            this.showLatestAdminNotification(
+              summary.notifications
+            );
+          },
+
+          error: error => {
+            console.error(
+              'Anlık admin bildirimi alınamadı:',
+              error
+            );
+
+            this.adminNotificationsChangedSubscription =
+              null;
+
+            this.adminNotificationToastInitialized =
+              false;
+          }
+        });
+  }
+
+  private showLatestAdminNotification(
+    notifications:
+      AdminNotification[]
+  ): void {
+
+    const latestNotification =
+      this.getLatestNotification(
+        notifications
+      );
+
+    if (!latestNotification) {
+      return;
+    }
+
+    if (
+      latestNotification.id <=
+      this.lastKnownAdminNotificationId
+    ) {
+      return;
+    }
+
+    this.lastKnownAdminNotificationId =
+      latestNotification.id;
+
+    if (
+      !this.authService.isAdmin()
+    ) {
+      return;
+    }
 
     this.messageService.add({
-      severity: 'info',
+      severity:
+        this.getNotificationSeverity(
+          latestNotification
+        ),
 
       summary:
-        'Yeni Ödünç İşlemi',
+        latestNotification.title,
 
       detail:
-        `"${notification.bookName}" (ID: ${notification.bookId}), ${notification.userEmail} tarafından ödünç alındı. ${formattedDate}`,
+        latestNotification.message,
 
       life: 6000
     });
+  }
+
+  private getLatestNotification(
+    notifications:
+      AdminNotification[]
+  ): AdminNotification | null {
+
+    if (notifications.length === 0) {
+      return null;
+    }
+
+    return notifications.reduce(
+      (
+        latest,
+        current
+      ) =>
+        current.id > latest.id
+          ? current
+          : latest
+    );
+  }
+
+  private getNotificationSeverity(
+    notification:
+      AdminNotification
+  ): 'info' | 'warn' {
+
+    if (
+      notification.type ===
+      'ReturnRequested'
+    ) {
+      return 'warn';
+    }
+
+    return 'info';
+  }
+
+  private resetAdminNotificationToast():
+    void {
+
+    this.adminNotificationsChangedSubscription
+      ?.unsubscribe();
+
+    this.adminNotificationsChangedSubscription =
+      null;
+
+    this.notificationBaselineSubscription
+      ?.unsubscribe();
+
+    this.notificationBaselineSubscription =
+      null;
+
+    this.adminNotificationToastInitialized =
+      false;
+
+    this.lastKnownAdminNotificationId =
+      0;
+
+    this.messageService.clear();
   }
 }

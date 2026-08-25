@@ -1,0 +1,212 @@
+<p-button
+  label="Kitabı Önizle"
+  styleClass="book-preview-trigger"
+  ariaLabel="Kitabı önizle"
+  (onClick)="openPreview()"
+></p-button>
+
+<p-dialog
+  header="Kitap Önizlemesi"
+  [(visible)]="previewDialogVisible"
+  [modal]="true"
+  [dismissableMask]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{
+    width: '48rem',
+    maxWidth: '95vw'
+  }"
+  appendTo="body"
+  styleClass="book-preview-dialog"
+  (onHide)="closePreview()"
+>
+
+  @if (loading()) {
+
+    <div class="preview-state">
+
+      <span
+        class="preview-spinner"
+        aria-hidden="true"
+      ></span>
+
+      <strong>
+        Kitap bilgileri yükleniyor...
+      </strong>
+
+      <span>
+        Kapak ve kitap detayları
+        Google Books üzerinden aranıyor.
+      </span>
+
+    </div>
+
+  } @else if (errorMessage()) {
+
+    <div class="preview-state preview-error">
+
+      <span
+        class="preview-state-icon"
+        aria-hidden="true"
+      >
+        ⚠️
+      </span>
+
+      <strong>
+        Önizleme yüklenemedi
+      </strong>
+
+      <span>
+        {{ errorMessage() }}
+      </span>
+
+      <p-button
+        label="Tekrar Dene"
+        severity="secondary"
+        (onClick)="retry()"
+      ></p-button>
+
+    </div>
+
+  } @else if (preview(); as bookPreview) {
+
+    <div class="preview-layout">
+
+      <div class="preview-cover-area">
+
+        @if (
+          bookPreview.coverImageUrl &&
+          !coverImageFailed()
+        ) {
+
+          <div class="preview-cover-frame">
+
+            <img
+              class="preview-cover"
+              [src]="bookPreview.coverImageUrl"
+              [alt]="bookPreview.name + ' kitap kapağı'"
+              (error)="onCoverImageError()"
+            />
+
+          </div>
+
+        } @else {
+
+          <div class="preview-cover-placeholder">
+
+            <span
+              class="preview-book-icon"
+              aria-hidden="true"
+            >
+              📚
+            </span>
+
+            <span>
+              Kapak görseli bulunamadı
+            </span>
+
+          </div>
+
+        }
+
+      </div>
+
+      <div class="preview-information">
+
+        <div class="preview-heading">
+
+          <span class="preview-label">
+            Kitap
+          </span>
+
+          <h2>
+            {{ bookPreview.name }}
+          </h2>
+
+          <p>
+            {{ bookPreview.author }}
+          </p>
+
+        </div>
+
+        <div class="preview-detail-card">
+
+          <span class="preview-detail-label">
+            Sayfa Sayısı
+          </span>
+
+          <strong>
+            @if (bookPreview.pageCount) {
+              {{ bookPreview.pageCount }}
+              sayfa
+            } @else {
+              Bilgi bulunamadı
+            }
+          </strong>
+
+        </div>
+
+        <div class="preview-summary">
+
+          <h3>
+            Kitap Özeti
+          </h3>
+
+          @if (bookPreview.summary) {
+            <p>
+              {{ bookPreview.summary }}
+            </p>
+          } @else {
+            <p class="preview-missing-text">
+              Bu kitap için kısa özet
+              bilgisi bulunamadı.
+            </p>
+          }
+
+        </div>
+
+        @if (!bookPreview.metadataFound) {
+
+          <div class="preview-information-note">
+
+            <span aria-hidden="true">
+              ℹ️
+            </span>
+
+            <span>
+              Google Books üzerinde bu kitapla
+              eşleşen ayrıntılı bilgi bulunamadı.
+            </span>
+
+          </div>
+
+        }
+
+        <div class="preview-actions">
+
+          @if (bookPreview.infoUrl) {
+            <a
+              class="google-books-link"
+              [href]="bookPreview.infoUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Google Books'ta Görüntüle
+            </a>
+          }
+
+          <p-button
+            label="Kapat"
+            severity="secondary"
+            (onClick)="closePreview()"
+          ></p-button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  }
+
+</p-dialog>

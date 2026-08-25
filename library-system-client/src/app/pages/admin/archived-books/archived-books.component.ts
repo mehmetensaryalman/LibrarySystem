@@ -38,11 +38,16 @@ import {
   SignalRService
 } from '../../../core/services/signalr.service';
 
+import {
+  AdminNotificationsComponent
+} from '../../../shared/admin-notifications/admin-notifications.component';
+
 @Component({
   selector: 'app-archived-books',
 
   imports: [
     ButtonModule,
+    AdminNotificationsComponent,
     TableModule
   ],
 

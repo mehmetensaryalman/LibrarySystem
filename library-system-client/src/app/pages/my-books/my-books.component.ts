@@ -103,7 +103,7 @@ export class MyBooksComponent
 
   loading = signal(false);
 
-  returningBookId =
+  requestingReturnBookId =
     signal<number | null>(null);
 
   errorMessage = signal('');
@@ -310,22 +310,30 @@ export class MyBooksComponent
     return `${delayedDays} gün gecikmeli`;
   }
 
-  returnBook(
+  requestReturn(
     book: BorrowedBook
   ): void {
     this.errorMessage.set('');
 
-    this.returningBookId.set(
+    if (book.returnRequestedAt) {
+      this.errorMessage.set(
+        'Bu kitap için zaten bekleyen bir iade talebiniz bulunmaktadır.'
+      );
+
+      return;
+    }
+
+    this.requestingReturnBookId.set(
       book.bookId
     );
 
     this.borrowService
-      .returnBook(
+      .requestReturn(
         book.bookId
       )
       .pipe(
         finalize(() => {
-          this.returningBookId.set(
+          this.requestingReturnBookId.set(
             null
           );
         })
@@ -340,15 +348,47 @@ export class MyBooksComponent
             return;
           }
 
+          const requestedAt =
+            new Date().toISOString();
+
+          /*
+           * API cevabından hemen sonra ilgili
+           * kitabı yerel olarak güncelliyoruz.
+           *
+           * Böylece kullanıcı ikinci GET isteğini
+           * beklemeden "İade bekleniyor"
+           * durumunu görür.
+           */
+          this.borrowedBooks.update(
+            books =>
+              books.map(currentBook =>
+                currentBook.bookId ===
+                  book.bookId &&
+                !currentBook.isReturned
+                  ? {
+                      ...currentBook,
+                      returnRequestedAt:
+                        requestedAt
+                    }
+                  : currentBook
+              )
+          );
+
           this.showSuccessMessage(
             result.message
           );
+
+          /*
+           * Yerel güncellemeden sonra sunucudaki
+           * kesin durumu tekrar alıyoruz.
+           */
+          this.loadMyBooks();
         },
 
         error: error => {
           this.errorMessage.set(
             error.error?.message ??
-            'Kitap iade edilirken bir hata oluştu.'
+            'İade talebi oluşturulurken bir hata oluştu.'
           );
         }
       });

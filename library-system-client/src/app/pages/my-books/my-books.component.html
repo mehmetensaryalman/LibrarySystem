@@ -121,6 +121,7 @@
           Aktif Ödünç Alınan Kitaplar
           ({{ activeBorrowedBooks().length }}/3)
         </p-tab>
+
         <p-tab value="history">
           Geçmiş İadeler
           ({{ returnedBooks().length }})
@@ -192,7 +193,11 @@
                 </td>
 
                 <td>
-                  Ödünç Alındı
+                  @if (book.returnRequestedAt) {
+                    İade bekleniyor
+                  } @else {
+                    Ödünç alındı
+                  }
                 </td>
 
                 <td>
@@ -205,14 +210,21 @@
 
                 <td>
                   <p-button
-                    label="İade Et"
+                    [label]="
+                      book.returnRequestedAt
+                        ? 'İade bekleniyor'
+                        : 'İade Talebi Oluştur'
+                    "
                     severity="secondary"
+                    [disabled]="
+                      !!book.returnRequestedAt
+                    "
                     [loading]="
-                      returningBookId() ===
+                      requestingReturnBookId() ===
                       book.bookId
                     "
                     (onClick)="
-                      returnBook(book)
+                      requestReturn(book)
                     "
                   ></p-button>
                 </td>

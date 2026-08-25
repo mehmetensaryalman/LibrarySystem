@@ -55,6 +55,12 @@ public interface IBorrowRepository
         CreateBorrowRequestAsync(
             BorrowRequest borrowRequest);
 
+    Task<CancelBorrowRequestWriteStatus>
+        CancelBorrowRequestAsync(
+            string userId,
+            int borrowRequestId,
+            DateTime cancelledAt);
+
     Task<ApproveBorrowRequestWriteResult>
         ApproveBorrowRequestAsync(
             int borrowRequestId,

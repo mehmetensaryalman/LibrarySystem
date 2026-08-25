@@ -4,8 +4,14 @@ import {
   OnInit,
   signal
 } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+
+import {
+  FormsModule
+} from '@angular/forms';
+
+import {
+  Router
+} from '@angular/router';
 
 import {
   debounceTime,
@@ -16,15 +22,41 @@ import {
   timeout
 } from 'rxjs';
 
-import { ButtonModule } from 'primeng/button';
-import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { ConfirmationService } from 'primeng/api';
-import { DialogModule } from 'primeng/dialog';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { InputTextModule } from 'primeng/inputtext';
-import { PaginatorModule } from 'primeng/paginator';
-import { SelectModule } from 'primeng/select';
-import { TableModule } from 'primeng/table';
+import {
+  ConfirmationService
+} from 'primeng/api';
+
+import {
+  ButtonModule
+} from 'primeng/button';
+
+import {
+  ConfirmDialogModule
+} from 'primeng/confirmdialog';
+
+import {
+  DialogModule
+} from 'primeng/dialog';
+
+import {
+  InputNumberModule
+} from 'primeng/inputnumber';
+
+import {
+  InputTextModule
+} from 'primeng/inputtext';
+
+import {
+  PaginatorModule
+} from 'primeng/paginator';
+
+import {
+  SelectModule
+} from 'primeng/select';
+
+import {
+  TableModule
+} from 'primeng/table';
 
 import {
   Book,
@@ -47,6 +79,14 @@ import {
   SignalRService
 } from '../../../core/services/signalr.service';
 
+import {
+  AdminNotificationsComponent
+} from '../../../shared/admin-notifications/admin-notifications.component';
+
+import {
+  BookPreviewComponent
+} from '../../../shared/components/book-preview/book-preview.component';
+
 type StockFilterValue =
   'all' |
   'inStock' |
@@ -58,6 +98,8 @@ type StockFilterValue =
   imports: [
     FormsModule,
     ButtonModule,
+    AdminNotificationsComponent,
+    BookPreviewComponent,
     ConfirmDialogModule,
     DialogModule,
     InputNumberModule,
@@ -83,7 +125,28 @@ export class BookListComponent
   books = signal<Book[]>([]);
   loading = signal(false);
 
+  pendingBorrowBookIds =
+    signal<Set<number>>(
+      new Set<number>()
+    );
+
+  pendingBorrowRequestIdsByBookId =
+    signal<Map<number, number>>(
+      new Map<number, number>()
+    );
+
+  pendingBorrowRequestsLoading =
+    signal(false);
+
+  activeBorrowBookIds =
+    signal<Set<number>>(
+      new Set<number>()
+    );
+
   borrowingBookId =
+    signal<number | null>(null);
+
+  cancellingBorrowRequestId =
     signal<number | null>(null);
 
   deletingBookId =
@@ -136,7 +199,6 @@ export class BookListComponent
 
   pageNumber = signal(1);
   pageSize = signal(5);
-
   first = signal(0);
 
   totalCount = signal(0);
@@ -146,6 +208,8 @@ export class BookListComponent
     5,
     10
   ];
+
+  readonly maxBorrowCount = 3;
 
   createDialogVisible = false;
   creatingBook = false;
@@ -186,6 +250,9 @@ export class BookListComponent
     new Subject<string>();
 
   private booksChangedSubscription:
+    Subscription | null = null;
+
+  private borrowsChangedSubscription:
     Subscription | null = null;
 
   private searchSubscription:
@@ -245,14 +312,32 @@ export class BookListComponent
           this.loadBooks();
         });
 
+    this.borrowsChangedSubscription =
+      this.signalRService
+        .borrowsChanged$
+        .subscribe(() => {
+          if (!this.isAdmin()) {
+            this.loadMyPendingBorrowRequests();
+            this.loadMyActiveBorrowBookIds();
+          }
+        });
+
     void this.signalRService
       .startConnection();
 
     this.loadBooks();
+
+    if (!this.isAdmin()) {
+      this.loadMyPendingBorrowRequests();
+      this.loadMyActiveBorrowBookIds();
+    }
   }
 
   ngOnDestroy(): void {
     this.booksChangedSubscription
+      ?.unsubscribe();
+
+    this.borrowsChangedSubscription
       ?.unsubscribe();
 
     this.searchSubscription
@@ -406,6 +491,142 @@ export class BookListComponent
       });
   }
 
+  loadMyPendingBorrowRequests(): void {
+    if (this.isAdmin()) {
+      this.pendingBorrowBookIds.set(
+        new Set<number>()
+      );
+
+      this.pendingBorrowRequestIdsByBookId
+        .set(
+          new Map<number, number>()
+        );
+
+      return;
+    }
+
+    this.pendingBorrowRequestsLoading
+      .set(true);
+
+    this.borrowService
+      .getMyPendingBorrowRequests()
+      .pipe(
+        finalize(() => {
+          this.pendingBorrowRequestsLoading
+            .set(false);
+        })
+      )
+      .subscribe({
+        next: requests => {
+          this.pendingBorrowBookIds.set(
+            new Set(
+              requests.map(request =>
+                request.bookId
+              )
+            )
+          );
+
+          this.pendingBorrowRequestIdsByBookId
+            .set(
+              new Map<number, number>(
+                requests.map(request => [
+                  request.bookId,
+                  request.borrowRequestId
+                ] as [number, number])
+              )
+            );
+        },
+
+        error: error => {
+          console.error(
+            'Bekleyen ödünç talepleri alınamadı:',
+            error
+          );
+
+          this.pendingBorrowBookIds.set(
+            new Set<number>()
+          );
+
+          this.pendingBorrowRequestIdsByBookId
+            .set(
+              new Map<number, number>()
+            );
+        }
+      });
+  }
+
+  loadMyActiveBorrowBookIds(): void {
+    if (this.isAdmin()) {
+      this.activeBorrowBookIds.set(
+        new Set<number>()
+      );
+
+      return;
+    }
+
+    this.borrowService
+      .getMyBooks()
+      .subscribe({
+        next: books => {
+          const activeBookIds =
+            new Set(
+              books
+                .filter(book =>
+                  !book.isReturned
+                )
+                .map(book =>
+                  book.bookId
+                )
+            );
+
+          this.activeBorrowBookIds.set(
+            activeBookIds
+          );
+        },
+
+        error: error => {
+          console.error(
+            'Aktif ödünç bilgileri alınamadı:',
+            error
+          );
+
+          this.activeBorrowBookIds.set(
+            new Set<number>()
+          );
+        }
+      });
+  }
+
+  hasActiveBorrow(
+    bookId: number
+  ): boolean {
+    return this.activeBorrowBookIds()
+      .has(bookId);
+  }
+
+  hasPendingBorrowRequest(
+    bookId: number
+  ): boolean {
+    return this.pendingBorrowBookIds()
+      .has(bookId);
+  }
+
+  getPendingBorrowRequestId(
+    bookId: number
+  ): number | null {
+    return this
+      .pendingBorrowRequestIdsByBookId()
+      .get(bookId) ?? null;
+  }
+
+  hasReachedBorrowLimit(): boolean {
+    return (
+      this.activeBorrowBookIds().size +
+      this.pendingBorrowBookIds().size >=
+      this.maxBorrowCount
+    );
+  }
+
   onSearchChange(
     value: string
   ): void {
@@ -427,7 +648,6 @@ export class BookListComponent
       value;
 
     this.resetPagination();
-
     this.loadBooks();
   }
 
@@ -438,7 +658,6 @@ export class BookListComponent
       value;
 
     this.resetPagination();
-
     this.loadBooks();
   }
 
@@ -497,18 +716,14 @@ export class BookListComponent
     this.searchChanges.next('');
 
     this.resetPagination();
-
     this.loadBooks();
   }
 
   hasActiveFilters(): boolean {
     return (
-      this.appliedSearch.length >
-        0 ||
-      this.stockFilter !==
-        'all' ||
-      this.sortBy !==
-        'newest'
+      this.appliedSearch.length > 0 ||
+      this.stockFilter !== 'all' ||
+      this.sortBy !== 'newest'
     );
   }
 
@@ -516,6 +731,38 @@ export class BookListComponent
     book: Book
   ): void {
     this.errorMessage.set('');
+
+    if (
+      this.hasActiveBorrow(
+        book.id
+      )
+    ) {
+      this.errorMessage.set(
+        'Bu kitap zaten aktif olarak alınmış durumdadır.'
+      );
+
+      return;
+    }
+
+    if (
+      this.hasPendingBorrowRequest(
+        book.id
+      )
+    ) {
+      this.errorMessage.set(
+        'Bu kitap için zaten bekleyen bir ödünç talebiniz bulunmaktadır.'
+      );
+
+      return;
+    }
+
+    if (this.hasReachedBorrowLimit()) {
+      this.errorMessage.set(
+        `Aktif ödünçleriniz ve bekleyen ödünç talepleriniz birlikte en fazla ${this.maxBorrowCount} olabilir.`
+      );
+
+      return;
+    }
 
     if (book.stock <= 0) {
       this.errorMessage.set(
@@ -551,44 +798,176 @@ export class BookListComponent
           this.showSuccessMessage(
             result.message
           );
+
+          this.pendingBorrowBookIds
+            .update(currentBookIds => {
+              const updatedBookIds =
+                new Set(currentBookIds);
+
+              updatedBookIds.add(
+                book.id
+              );
+
+              return updatedBookIds;
+            });
+
+          this.loadMyPendingBorrowRequests();
         },
 
         error: error => {
-  const message =
-    error.error?.message ??
-    'Kitap ödünç alınırken bir hata oluştu.';
+          const message =
+            error.error?.message ??
+            'Ödünç talebi oluşturulurken bir hata oluştu.';
 
-  const penaltyEndDate =
-    error.error?.penaltyEndDate;
+          const penaltyEndDate =
+            error.error?.penaltyEndDate;
 
-  if (penaltyEndDate) {
-    const formattedPenaltyEndDate =
-      new Intl.DateTimeFormat(
-        'tr-TR',
-        {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
+          if (penaltyEndDate) {
+            const formattedPenaltyEndDate =
+              new Intl.DateTimeFormat(
+                'tr-TR',
+                {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }
+              ).format(
+                new Date(
+                  penaltyEndDate
+                )
+              );
+
+            this.errorMessage.set(
+              `${message} Ceza bitiş zamanı: ${formattedPenaltyEndDate}`
+            );
+
+            return;
+          }
+
+          this.errorMessage.set(
+            message
+          );
         }
-      ).format(
-        new Date(
-          penaltyEndDate
-        )
-      );
-
-    this.errorMessage.set(
-      `${message} Ceza bitiş zamanı: ${formattedPenaltyEndDate}`
-    );
-
-    return;
+      });
   }
 
-  this.errorMessage.set(
-    message
-  );
-}
+  confirmCancelBorrowRequest(
+    book: Book
+  ): void {
+    this.errorMessage.set('');
+
+    const borrowRequestId =
+      this.getPendingBorrowRequestId(
+        book.id
+      );
+
+    if (borrowRequestId === null) {
+      this.errorMessage.set(
+        'Bekleyen talep bilgisi henüz yüklenemedi. Lütfen kısa bir süre sonra tekrar deneyin.'
+      );
+
+      this.loadMyPendingBorrowRequests();
+
+      return;
+    }
+
+    this.confirmationService
+      .confirm({
+        header:
+          'Ödünç Talebini İptal Et',
+
+        message:
+          `"${book.name}" kitabı için oluşturduğunuz ödünç talebini iptal etmek istediğinize emin misiniz?`,
+
+        acceptLabel:
+          'Talebi İptal Et',
+
+        rejectLabel:
+          'Vazgeç',
+
+        acceptButtonStyleClass:
+          'p-button-danger',
+
+        accept: () => {
+          this.cancelBorrowRequest(
+            book.id,
+            borrowRequestId
+          );
+        }
+      });
+  }
+
+  private cancelBorrowRequest(
+    bookId: number,
+    borrowRequestId: number
+  ): void {
+    this.errorMessage.set('');
+
+    this.cancellingBorrowRequestId
+      .set(
+        borrowRequestId
+      );
+
+    this.borrowService
+      .cancelBorrowRequest(
+        borrowRequestId
+      )
+      .pipe(
+        finalize(() => {
+          this.cancellingBorrowRequestId
+            .set(null);
+        })
+      )
+      .subscribe({
+        next: result => {
+          if (!result.success) {
+            this.errorMessage.set(
+              result.message
+            );
+
+            return;
+          }
+
+          this.pendingBorrowBookIds
+            .update(currentBookIds => {
+              const updatedBookIds =
+                new Set(currentBookIds);
+
+              updatedBookIds.delete(
+                bookId
+              );
+
+              return updatedBookIds;
+            });
+
+          this.pendingBorrowRequestIdsByBookId
+            .update(currentRequests => {
+              const updatedRequests =
+                new Map(currentRequests);
+
+              updatedRequests.delete(
+                bookId
+              );
+
+              return updatedRequests;
+            });
+
+          this.showSuccessMessage(
+            result.message
+          );
+        },
+
+        error: error => {
+          this.errorMessage.set(
+            error.error?.message ??
+            'Ödünç talebi iptal edilirken bir hata oluştu.'
+          );
+
+          this.loadMyPendingBorrowRequests();
+          this.loadMyActiveBorrowBookIds();
+        }
       });
   }
 
@@ -1073,7 +1452,6 @@ export class BookListComponent
       normalizedSearch;
 
     this.resetPagination();
-
     this.loadBooks();
   }
 
@@ -1136,14 +1514,6 @@ export class BookListComponent
         null;
     }
 
-    /*
-     * Mevcut mesajı önce DOM'dan kaldırıyoruz.
-     *
-     * Bunun iki sebebi var:
-     * 1. Eski mesajın timeout süresini tamamen sıfırlamak.
-     * 2. .success-message CSS fade animasyonunun
-     *    yeni mesaj için baştan başlamasını sağlamak.
-     */
     this.successMessage.set('');
 
     this.successMessageRestartTimeout =
@@ -1155,10 +1525,6 @@ export class BookListComponent
         this.successMessageRestartTimeout =
           null;
 
-        /*
-         * Her yeni mesaj kendi 3 saniye görünme
-         * + 0.6 saniye fade süresini alır.
-         */
         this.successMessageTimeout =
           setTimeout(() => {
             this.successMessage.set('');

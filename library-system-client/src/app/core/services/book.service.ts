@@ -1,14 +1,19 @@
 import { Injectable } from '@angular/core';
+
 import {
   HttpClient,
   HttpParams
 } from '@angular/common/http';
-import { Observable } from 'rxjs';
+
+import {
+  Observable
+} from 'rxjs';
 
 import {
   ArchivedBook,
   Book,
   BookFilter,
+  BookPreview,
   CreateBookRequest,
   DeleteBookResponse,
   PagedResult,
@@ -24,7 +29,8 @@ export class BookService {
     'https://localhost:7008/api/books';
 
   constructor(
-    private readonly http: HttpClient
+    private readonly http:
+      HttpClient
   ) {
   }
 
@@ -82,6 +88,14 @@ export class BookService {
     );
   }
 
+  getPreview(
+    bookId: number
+  ): Observable<BookPreview> {
+    return this.http.get<BookPreview>(
+      `${this.apiUrl}/${bookId}/preview`
+    );
+  }
+
   create(
     request: CreateBookRequest
   ): Observable<Book> {
@@ -112,6 +126,7 @@ export class BookService {
 
   getArchived():
     Observable<ArchivedBook[]> {
+
     return this.http
       .get<ArchivedBook[]>(
         `${this.apiUrl}/archived`

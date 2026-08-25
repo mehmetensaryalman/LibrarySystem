@@ -57,6 +57,40 @@ public class BorrowController :
             result);
     }
 
+    [HttpDelete(
+        "borrow/requests/{borrowRequestId:int}")]
+    [Authorize(
+        Policy = "BorrowerOnly")]
+    public async Task<IActionResult>
+        CancelBorrowRequest(
+            int borrowRequestId)
+    {
+        var userId =
+            GetUserId();
+
+        if (
+            string.IsNullOrWhiteSpace(
+                userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _borrowService
+                .CancelBorrowRequestAsync(
+                    userId,
+                    borrowRequestId);
+
+        if (!result.Success)
+        {
+            return BadRequest(
+                result);
+        }
+
+        return Ok(
+            result);
+    }
+
     [HttpPost(
         "borrow/{bookId:int}/return-request")]
     [Authorize(

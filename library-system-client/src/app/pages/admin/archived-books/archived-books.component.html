@@ -27,10 +27,12 @@
         (onClick)="logout()"
       ></p-button>
 
+      <app-admin-notifications>
+      </app-admin-notifications>
+
     </div>
 
   </header>
-
 
   @if (errorMessage()) {
     <div class="error-message">
@@ -38,13 +40,11 @@
     </div>
   }
 
-
   @if (successMessage()) {
     <div class="success-message">
       {{ successMessage() }}
     </div>
   }
-
 
   <div class="table-card">
 
@@ -61,7 +61,6 @@
       </div>
 
     </div>
-
 
     <p-table
       [value]="archivedBooks()"
@@ -89,7 +88,6 @@
           <th>İşlem</th>
         </tr>
       </ng-template>
-
 
       <ng-template
         #body
@@ -139,7 +137,6 @@
 
         </tr>
       </ng-template>
-
 
       <ng-template #emptymessage>
         <tr>

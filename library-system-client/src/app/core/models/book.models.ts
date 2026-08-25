@@ -5,6 +5,18 @@ export interface Book {
   stock: number;
 }
 
+export interface BookPreview {
+  id: number;
+  name: string;
+  author: string;
+  coverImageUrl: string | null;
+  pageCount: number | null;
+  summary: string | null;
+  infoUrl: string | null;
+  source: string | null;
+  metadataFound: boolean;
+}
+
 export interface CreateBookRequest {
   name: string;
   author: string;

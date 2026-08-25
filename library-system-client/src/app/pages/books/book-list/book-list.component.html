@@ -1,5 +1,7 @@
 <div class="page">
+
   <header class="page-header">
+
     <div>
       <h1>Kütüphane Sistemi</h1>
       <p>Kitap Listesi</p>
@@ -8,26 +10,40 @@
     <div class="header-actions">
 
       @if (isAdmin()) {
+
         <p-button
           label="Admin Yönetim Paneli"
           styleClass="app-primary-button"
           (onClick)="goToAdminPanel()"
         ></p-button>
+
+        <p-button
+          label="Çıkış Yap"
+          styleClass="app-logout-button"
+          (onClick)="logout()"
+        ></p-button>
+
+        <app-admin-notifications>
+        </app-admin-notifications>
+
       } @else {
+
         <p-button
           label="Benim Kitaplarım"
           styleClass="app-primary-button"
           (onClick)="goToMyBooks()"
         ></p-button>
+
+        <p-button
+          label="Çıkış Yap"
+          styleClass="app-logout-button"
+          (onClick)="logout()"
+        ></p-button>
+
       }
 
-      <p-button
-        label="Çıkış Yap"
-        styleClass="app-logout-button"
-        (onClick)="logout()"
-      ></p-button>
-
     </div>
+
   </header>
 
   @if (errorMessage()) {
@@ -47,6 +63,7 @@
     <div class="book-list-controls">
 
       <div class="filter-field search-field">
+
         <label for="bookSearch">
           Kitap veya Yazar Ara
         </label>
@@ -61,9 +78,11 @@
           placeholder="Kitap adı veya yazar..."
           autocomplete="off"
         />
+
       </div>
 
       <div class="filter-field">
+
         <label for="stockFilter">
           Stok Durumu
         </label>
@@ -77,9 +96,11 @@
           (ngModelChange)="onStockFilterChange($event)"
           class="filter-select"
         ></p-select>
+
       </div>
 
       <div class="filter-field">
+
         <label for="sortBy">
           Sıralama
         </label>
@@ -93,22 +114,27 @@
           (ngModelChange)="onSortChange($event)"
           class="filter-select"
         ></p-select>
+
       </div>
 
       <div class="filter-clear-action">
+
         <p-button
           label="Filtreleri Temizle"
           severity="secondary"
           [disabled]="!hasActiveFilters()"
           (onClick)="clearFilters()"
         ></p-button>
+
       </div>
 
     </div>
 
     <div class="results-summary">
+
       <span>
-        Toplam {{ totalCount() }} kitap bulundu.
+        Toplam {{ totalCount() }}
+        kitap bulundu.
       </span>
 
       @if (totalPages() > 0) {
@@ -117,6 +143,7 @@
           / {{ totalPages() }}
         </span>
       }
+
     </div>
 
     <p-table
@@ -124,9 +151,10 @@
       [loading]="loading()"
       [tableStyle]="{
         'width': '100%',
-        'min-width': '65rem'
+        'min-width': '78rem'
       }"
     >
+
       <ng-template #header>
         <tr>
           <th>ID</th>
@@ -137,8 +165,12 @@
         </tr>
       </ng-template>
 
-      <ng-template #body let-book>
+      <ng-template
+        #body
+        let-book
+      >
         <tr>
+
           <td>
             {{ book.id }}
           </td>
@@ -156,18 +188,65 @@
           </td>
 
           <td>
+
             <div class="row-actions">
 
               @if (!isAdmin()) {
+
                 <p-button
-                  label="Ödünç Al"
-                  [disabled]="book.stock <= 0"
+                  [label]="
+                    hasActiveBorrow(book.id)
+                      ? 'Alındı'
+                      : hasPendingBorrowRequest(book.id)
+                        ? 'Talep Bekliyor'
+                        : hasReachedBorrowLimit()
+                          ? '3 Kitap Limiti Dolu'
+                          : 'Ödünç Talebi Oluştur'
+                  "
+                  [disabled]="
+                    pendingBorrowRequestsLoading() ||
+                    book.stock <= 0 ||
+                    hasActiveBorrow(book.id) ||
+                    hasPendingBorrowRequest(book.id) ||
+                    hasReachedBorrowLimit()
+                  "
                   [loading]="
                     borrowingBookId() ===
                     book.id
                   "
                   (onClick)="borrowBook(book)"
                 ></p-button>
+
+                @if (
+                  hasPendingBorrowRequest(
+                    book.id
+                  )
+                ) {
+
+                  <p-button
+                    label="Talebi İptal Et"
+                    severity="danger"
+                    [disabled]="
+                      pendingBorrowRequestsLoading() ||
+                      getPendingBorrowRequestId(
+                        book.id
+                      ) === null
+                    "
+                    [loading]="
+                      cancellingBorrowRequestId() ===
+                      getPendingBorrowRequestId(
+                        book.id
+                      )
+                    "
+                    (onClick)="
+                      confirmCancelBorrowRequest(
+                        book
+                      )
+                    "
+                  ></p-button>
+
+                }
+
               }
 
               @if (isAdmin()) {
@@ -190,55 +269,70 @@
 
               }
 
+              <app-book-preview
+                [book]="book"
+              ></app-book-preview>
+
             </div>
+
           </td>
+
         </tr>
       </ng-template>
 
       <ng-template #emptymessage>
+
         <tr>
           <td colspan="5">
 
             @if (hasActiveFilters()) {
-              Arama veya filtre kriterlerine uygun
-              kitap bulunamadı.
+              Arama veya filtre kriterlerine
+              uygun kitap bulunamadı.
             } @else {
               Henüz kitap bulunmuyor.
             }
 
           </td>
         </tr>
+
       </ng-template>
 
     </p-table>
 
     <div class="table-footer">
 
-  <div class="paginator-container">
-    <p-paginator
-      [first]="first()"
-      [rows]="pageSize()"
-      [totalRecords]="totalCount()"
-      [rowsPerPageOptions]="rowsPerPageOptions"
-      [showCurrentPageReport]="true"
-      currentPageReportTemplate="{first} - {last} / {totalRecords} kitap"
-      (onPageChange)="onPageChange($event)"
-    ></p-paginator>
-  </div>
+      <div class="paginator-container">
 
-  @if (isAdmin()) {
-    <div class="create-book-action">
-      <p-button
-        label="Kitap Ekle"
-        styleClass="app-floating-button"
-        (onClick)="openCreateDialog()"
-      ></p-button>
+        <p-paginator
+          [first]="first()"
+          [rows]="pageSize()"
+          [totalRecords]="totalCount()"
+          [rowsPerPageOptions]="rowsPerPageOptions"
+          [showCurrentPageReport]="true"
+          currentPageReportTemplate="{first} - {last} / {totalRecords} kitap"
+          (onPageChange)="onPageChange($event)"
+        ></p-paginator>
+
+      </div>
+
+      @if (isAdmin()) {
+
+        <div class="create-book-action">
+
+          <p-button
+            label="Kitap Ekle"
+            styleClass="app-floating-button"
+            (onClick)="openCreateDialog()"
+          ></p-button>
+
+        </div>
+
+      }
+
     </div>
-  }
-
-</div>
 
   </div>
+
 </div>
 
 <p-dialog
@@ -250,6 +344,7 @@
     maxWidth: '95vw'
   }"
 >
+
   <form
     class="book-form"
     (ngSubmit)="createBook()"
@@ -262,6 +357,7 @@
     }
 
     <div class="form-field">
+
       <label for="bookName">
         Kitap Adı
       </label>
@@ -274,9 +370,11 @@
         [(ngModel)]="newBookName"
         autocomplete="off"
       />
+
     </div>
 
     <div class="form-field">
+
       <label for="bookAuthor">
         Yazar
       </label>
@@ -289,9 +387,11 @@
         [(ngModel)]="newBookAuthor"
         autocomplete="off"
       />
+
     </div>
 
     <div class="form-field">
+
       <label for="bookStock">
         Stok
       </label>
@@ -307,6 +407,7 @@
         [showButtons]="true"
         [useGrouping]="false"
       ></p-inputnumber>
+
     </div>
 
     <div class="dialog-actions">
@@ -327,8 +428,8 @@
     </div>
 
   </form>
-</p-dialog>
 
+</p-dialog>
 
 <p-dialog
   header="Kitabı Düzenle"
@@ -339,6 +440,7 @@
     maxWidth: '95vw'
   }"
 >
+
   <form
     class="book-form"
     (ngSubmit)="updateBook()"
@@ -351,6 +453,7 @@
     }
 
     <div class="form-field">
+
       <label for="editBookName">
         Kitap Adı
       </label>
@@ -363,9 +466,11 @@
         [(ngModel)]="editBookName"
         autocomplete="off"
       />
+
     </div>
 
     <div class="form-field">
+
       <label for="editBookAuthor">
         Yazar
       </label>
@@ -378,9 +483,11 @@
         [(ngModel)]="editBookAuthor"
         autocomplete="off"
       />
+
     </div>
 
     <div class="form-field">
+
       <label for="editBookStock">
         Stok
       </label>
@@ -396,6 +503,7 @@
         [showButtons]="true"
         [useGrouping]="false"
       ></p-inputnumber>
+
     </div>
 
     <div class="dialog-actions">
@@ -416,7 +524,8 @@
     </div>
 
   </form>
+
 </p-dialog>
 
-
-<p-confirmdialog></p-confirmdialog>
+<p-confirmdialog>
+</p-confirmdialog>

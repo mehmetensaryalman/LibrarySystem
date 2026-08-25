@@ -26,7 +26,8 @@ public class BorrowRepository :
         GetBookByIdAsync(
             int bookId)
     {
-        return await _dbContext.Books
+        return await _dbContext
+            .Books
             .AsNoTracking()
             .FirstOrDefaultAsync(book =>
                 book.Id == bookId &&
@@ -156,7 +157,8 @@ public class BorrowRepository :
                 string>();
         }
 
-        return await _dbContext.Users
+        return await _dbContext
+            .Users
             .AsNoTracking()
             .Where(user =>
                 ids.Contains(
@@ -253,15 +255,98 @@ public class BorrowRepository :
         CreateBorrowRequestAsync(
             BorrowRequest borrowRequest)
     {
-        await _dbContext
-            .BorrowRequests
-            .AddAsync(
-                borrowRequest);
+        await using var transaction =
+            await _dbContext
+                .Database
+                .BeginTransactionAsync();
 
         try
         {
+            await LockUserAsync(
+                borrowRequest.UserId);
+
+            var cancellationCooldownStart =
+                borrowRequest
+                    .RequestedAt
+                    .AddMinutes(
+                        -BorrowRequestRules
+                            .CancellationCooldownMinutes);
+
+            var hasRecentCancellationForBook =
+                await _dbContext
+                    .BorrowRequests
+                    .AsNoTracking()
+                    .AnyAsync(request =>
+                        request.UserId ==
+                            borrowRequest.UserId &&
+                        request.BookId ==
+                            borrowRequest.BookId &&
+                        request.Status ==
+                            BorrowRequestStatus
+                                .Cancelled &&
+                        request.ProcessedAt
+                            .HasValue &&
+                        request.ProcessedAt.Value >
+                            cancellationCooldownStart);
+
+            if (
+                hasRecentCancellationForBook)
+            {
+                await transaction
+                    .RollbackAsync();
+
+                return
+                    BorrowRequestWriteStatus
+                        .CancellationCooldownActive;
+            }
+
+            var activeBorrowCount =
+                await _dbContext
+                    .BorrowRecords
+                    .AsNoTracking()
+                    .CountAsync(record =>
+                        record.UserId ==
+                            borrowRequest.UserId &&
+                        !record.IsReturned);
+
+            var pendingRequestCount =
+                await _dbContext
+                    .BorrowRequests
+                    .AsNoTracking()
+                    .CountAsync(request =>
+                        request.UserId ==
+                            borrowRequest.UserId &&
+                        request.Status ==
+                            BorrowRequestStatus
+                                .Pending);
+
+            var reservedBorrowCount =
+                activeBorrowCount +
+                pendingRequestCount;
+
+            if (
+                reservedBorrowCount >=
+                BorrowRules
+                    .MaxActiveBorrowCount)
+            {
+                await transaction
+                    .RollbackAsync();
+
+                return
+                    BorrowRequestWriteStatus
+                        .BorrowLimitReached;
+            }
+
+            await _dbContext
+                .BorrowRequests
+                .AddAsync(
+                    borrowRequest);
+
             await _dbContext
                 .SaveChangesAsync();
+
+            await transaction
+                .CommitAsync();
 
             return
                 BorrowRequestWriteStatus
@@ -273,6 +358,9 @@ public class BorrowRepository :
                 IsDuplicatePendingBorrowRequestViolation(
                     exception))
         {
+            await transaction
+                .RollbackAsync();
+
             _dbContext
                 .Entry(
                     borrowRequest)
@@ -283,16 +371,25 @@ public class BorrowRepository :
                 BorrowRequestWriteStatus
                     .DuplicatePendingRequest;
         }
+        catch
+        {
+            await transaction
+                .RollbackAsync();
+
+            throw;
+        }
     }
 
-    public async Task<ApproveBorrowRequestWriteResult>
-        ApproveBorrowRequestAsync(
+    public async Task<
+        CancelBorrowRequestWriteStatus>
+        CancelBorrowRequestAsync(
+            string userId,
             int borrowRequestId,
-            string adminUserId,
-            DateTime approvalDate)
+            DateTime cancelledAt)
     {
         await using var transaction =
-            await _dbContext.Database
+            await _dbContext
+                .Database
                 .BeginTransactionAsync();
 
         try
@@ -304,12 +401,87 @@ public class BorrowRepository :
             if (
                 borrowRequest is null ||
                 borrowRequest.Status !=
-                    BorrowRequestStatus.Pending)
+                    BorrowRequestStatus
+                        .Pending ||
+                borrowRequest.UserId !=
+                    userId)
             {
                 await transaction
                     .RollbackAsync();
 
-                return new ApproveBorrowRequestWriteResult
+                return
+                    CancelBorrowRequestWriteStatus
+                        .PendingRequestNotFound;
+            }
+
+            await LockUserAsync(
+                userId);
+
+            borrowRequest.Status =
+                BorrowRequestStatus
+                    .Cancelled;
+
+            borrowRequest.ProcessedAt =
+                cancelledAt;
+
+            borrowRequest
+                .ProcessedByAdminUserId =
+                    null;
+
+            borrowRequest.BorrowRecordId =
+                null;
+
+            borrowRequest.RejectionReason =
+                null;
+
+            await _dbContext
+                .SaveChangesAsync();
+
+            await transaction
+                .CommitAsync();
+
+            return
+                CancelBorrowRequestWriteStatus
+                    .Success;
+        }
+        catch
+        {
+            await transaction
+                .RollbackAsync();
+
+            throw;
+        }
+    }
+
+    public async Task<
+        ApproveBorrowRequestWriteResult>
+        ApproveBorrowRequestAsync(
+            int borrowRequestId,
+            string adminUserId,
+            DateTime approvalDate)
+    {
+        await using var transaction =
+            await _dbContext
+                .Database
+                .BeginTransactionAsync();
+
+        try
+        {
+            var borrowRequest =
+                await LockBorrowRequestAsync(
+                    borrowRequestId);
+
+            if (
+                borrowRequest is null ||
+                borrowRequest.Status !=
+                    BorrowRequestStatus
+                        .Pending)
+            {
+                await transaction
+                    .RollbackAsync();
+
+                return new
+                    ApproveBorrowRequestWriteResult
                 {
                     Status =
                         ApproveBorrowRequestWriteStatus
@@ -336,7 +508,8 @@ public class BorrowRepository :
                 await transaction
                     .RollbackAsync();
 
-                return new ApproveBorrowRequestWriteResult
+                return new
+                    ApproveBorrowRequestWriteResult
                 {
                     Status =
                         ApproveBorrowRequestWriteStatus
@@ -365,7 +538,8 @@ public class BorrowRepository :
                 await transaction
                     .RollbackAsync();
 
-                return new ApproveBorrowRequestWriteResult
+                return new
+                    ApproveBorrowRequestWriteResult
                 {
                     Status =
                         ApproveBorrowRequestWriteStatus
@@ -395,7 +569,8 @@ public class BorrowRepository :
                 await transaction
                     .RollbackAsync();
 
-                return new ApproveBorrowRequestWriteResult
+                return new
+                    ApproveBorrowRequestWriteResult
                 {
                     Status =
                         ApproveBorrowRequestWriteStatus
@@ -426,7 +601,8 @@ public class BorrowRepository :
                 await transaction
                     .RollbackAsync();
 
-                return new ApproveBorrowRequestWriteResult
+                return new
+                    ApproveBorrowRequestWriteResult
                 {
                     Status =
                         ApproveBorrowRequestWriteStatus
@@ -462,7 +638,8 @@ public class BorrowRepository :
                 await transaction
                     .RollbackAsync();
 
-                return new ApproveBorrowRequestWriteResult
+                return new
+                    ApproveBorrowRequestWriteResult
                 {
                     Status =
                         ApproveBorrowRequestWriteStatus
@@ -489,7 +666,8 @@ public class BorrowRepository :
                         approvalDate,
 
                     DueDate =
-                        approvalDate.AddDays(7),
+                        approvalDate
+                            .AddDays(7),
 
                     ReturnRequestedAt =
                         null,
@@ -523,7 +701,8 @@ public class BorrowRepository :
                 await transaction
                     .RollbackAsync();
 
-                return new ApproveBorrowRequestWriteResult
+                return new
+                    ApproveBorrowRequestWriteResult
                 {
                     Status =
                         ApproveBorrowRequestWriteStatus
@@ -538,13 +717,15 @@ public class BorrowRepository :
             }
 
             borrowRequest.Status =
-                BorrowRequestStatus.Approved;
+                BorrowRequestStatus
+                    .Approved;
 
             borrowRequest.ProcessedAt =
                 approvalDate;
 
-            borrowRequest.ProcessedByAdminUserId =
-                adminUserId;
+            borrowRequest
+                .ProcessedByAdminUserId =
+                    adminUserId;
 
             borrowRequest.BorrowRecordId =
                 borrowRecord.Id;
@@ -558,7 +739,8 @@ public class BorrowRepository :
             await transaction
                 .CommitAsync();
 
-            return new ApproveBorrowRequestWriteResult
+            return new
+                ApproveBorrowRequestWriteResult
             {
                 Status =
                     ApproveBorrowRequestWriteStatus
@@ -583,7 +765,8 @@ public class BorrowRepository :
         }
     }
 
-    public async Task<RejectBorrowRequestWriteStatus>
+    public async Task<
+        RejectBorrowRequestWriteStatus>
         RejectBorrowRequestAsync(
             int borrowRequestId,
             string adminUserId,
@@ -591,7 +774,8 @@ public class BorrowRepository :
             string? rejectionReason)
     {
         await using var transaction =
-            await _dbContext.Database
+            await _dbContext
+                .Database
                 .BeginTransactionAsync();
 
         try
@@ -603,7 +787,8 @@ public class BorrowRepository :
             if (
                 borrowRequest is null ||
                 borrowRequest.Status !=
-                    BorrowRequestStatus.Pending)
+                    BorrowRequestStatus
+                        .Pending)
             {
                 await transaction
                     .RollbackAsync();
@@ -614,13 +799,15 @@ public class BorrowRepository :
             }
 
             borrowRequest.Status =
-                BorrowRequestStatus.Rejected;
+                BorrowRequestStatus
+                    .Rejected;
 
             borrowRequest.ProcessedAt =
                 processedAt;
 
-            borrowRequest.ProcessedByAdminUserId =
-                adminUserId;
+            borrowRequest
+                .ProcessedByAdminUserId =
+                    adminUserId;
 
             borrowRequest.BorrowRecordId =
                 null;
@@ -650,14 +837,16 @@ public class BorrowRepository :
         }
     }
 
-    public async Task<ReturnRequestWriteStatus>
+    public async Task<
+        ReturnRequestWriteStatus>
         RequestReturnAsync(
             string userId,
             int bookId,
             DateTime requestDate)
     {
         await using var transaction =
-            await _dbContext.Database
+            await _dbContext
+                .Database
                 .BeginTransactionAsync();
 
         try
@@ -713,6 +902,7 @@ public class BorrowRepository :
                             setters.SetProperty(
                                 record =>
                                     record.ReturnRequestedAt,
+
                                 requestDate));
 
             if (affectedRows == 0)
@@ -766,7 +956,8 @@ public class BorrowRepository :
             BorrowRecord borrowRecord)
     {
         await using var transaction =
-            await _dbContext.Database
+            await _dbContext
+                .Database
                 .BeginTransactionAsync();
 
         try
@@ -838,7 +1029,8 @@ public class BorrowRepository :
             }
 
             var affectedBookRows =
-                await _dbContext.Books
+                await _dbContext
+                    .Books
                     .Where(book =>
                         book.Id ==
                             borrowRecord.BookId &&
@@ -903,7 +1095,8 @@ public class BorrowRepository :
         }
     }
 
-    public async Task<ReturnBookWriteResult>
+    public async Task<
+        ReturnBookWriteResult>
         ReturnBookAsync(
             string userId,
             int bookId,
@@ -911,7 +1104,8 @@ public class BorrowRepository :
             DateTime returnDate)
     {
         await using var transaction =
-            await _dbContext.Database
+            await _dbContext
+                .Database
                 .BeginTransactionAsync();
 
         try
@@ -956,14 +1150,18 @@ public class BorrowRepository :
                                 .SetProperty(
                                     record =>
                                         record.IsReturned,
+
                                     true)
                                 .SetProperty(
                                     record =>
                                         record.ReturnDate,
+
                                     returnDate)
                                 .SetProperty(
                                     record =>
-                                        record.ReturnedToAdminUserId,
+                                        record
+                                            .ReturnedToAdminUserId,
+
                                     adminUserId));
 
             if (affectedBorrowRows == 0)
@@ -980,7 +1178,8 @@ public class BorrowRepository :
             }
 
             var affectedBookRows =
-                await _dbContext.Books
+                await _dbContext
+                    .Books
                     .Where(book =>
                         book.Id ==
                             bookId)
@@ -1025,7 +1224,8 @@ public class BorrowRepository :
                 penaltyDays =
                     Math.Max(
                         1,
-                        (int)Math.Ceiling(
+                        (int)
+                        Math.Ceiling(
                             overdueDuration
                                 .TotalDays));
 
@@ -1047,7 +1247,8 @@ public class BorrowRepository :
                     returnDate;
 
                 penaltyEndDate =
-                    penaltyStartDate.Value
+                    penaltyStartDate
+                        .Value
                         .AddDays(
                             penaltyDays);
 
@@ -1064,10 +1265,12 @@ public class BorrowRepository :
                             penaltyDays,
 
                         StartDate =
-                            penaltyStartDate.Value,
+                            penaltyStartDate
+                                .Value,
 
                         EndDate =
-                            penaltyEndDate.Value,
+                            penaltyEndDate
+                                .Value,
 
                         CreatedAt =
                             returnDate
@@ -1131,7 +1334,8 @@ public class BorrowRepository :
             string userId)
     {
         var user =
-            await _dbContext.Users
+            await _dbContext
+                .Users
                 .FromSqlInterpolated(
                     $"""
                         SELECT *
@@ -1144,8 +1348,9 @@ public class BorrowRepository :
 
         if (user is null)
         {
-            throw new InvalidOperationException(
-                "Kullanıcı bulunamadı.");
+            throw new
+                InvalidOperationException(
+                    "Kullanıcı bulunamadı.");
         }
     }
 

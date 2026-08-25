@@ -3,5 +3,7 @@
 public enum BorrowRequestWriteStatus
 {
     Success,
-    DuplicatePendingRequest
+    DuplicatePendingRequest,
+    BorrowLimitReached,
+    CancellationCooldownActive
 }

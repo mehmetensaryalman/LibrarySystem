@@ -3,12 +3,20 @@ import {
 } from '@angular/common';
 
 import {
+  HttpErrorResponse
+} from '@angular/common/http';
+
+import {
   Component,
   OnDestroy,
   OnInit,
   computed,
   signal
 } from '@angular/core';
+
+import {
+  FormsModule
+} from '@angular/forms';
 
 import {
   Router
@@ -32,6 +40,10 @@ import {
 } from 'primeng/confirmdialog';
 
 import {
+  DialogModule
+} from 'primeng/dialog';
+
+import {
   TableModule
 } from 'primeng/table';
 
@@ -40,7 +52,8 @@ import {
 } from 'primeng/tabs';
 
 import {
-  AdminBorrow
+  AdminBorrow,
+  AdminBorrowRequest
 } from '../../../core/models/borrow.models';
 
 import {
@@ -55,13 +68,20 @@ import {
   SignalRService
 } from '../../../core/services/signalr.service';
 
+import {
+  AdminNotificationsComponent
+} from '../../../shared/admin-notifications/admin-notifications.component';
+
 @Component({
   selector: 'app-borrow-management',
 
   imports: [
     DatePipe,
+    FormsModule,
     ButtonModule,
+    AdminNotificationsComponent,
     ConfirmDialogModule,
+    DialogModule,
     TableModule,
     TabsModule
   ],
@@ -78,6 +98,9 @@ import {
 })
 export class BorrowManagementComponent
   implements OnInit, OnDestroy {
+
+  borrowRequests =
+    signal<AdminBorrowRequest[]>([]);
 
   borrows =
     signal<AdminBorrow[]>([]);
@@ -96,10 +119,27 @@ export class BorrowManagementComponent
     )
   );
 
-  loading = signal(false);
+  borrowRequestsLoading =
+    signal(false);
+
+  borrowsLoading =
+    signal(false);
+
+  processingBorrowRequestId =
+    signal<number | null>(null);
 
   returningBorrowRecordId =
     signal<number | null>(null);
+
+  rejectDialogVisible = false;
+
+  rejectingBorrowRequest:
+    AdminBorrowRequest | null = null;
+
+  rejectionReason = '';
+
+  rejectDialogErrorMessage =
+    signal('');
 
   errorMessage =
     signal('');
@@ -111,6 +151,10 @@ export class BorrowManagementComponent
     Subscription | null = null;
 
   private successMessageTimeout:
+    ReturnType<typeof setTimeout> |
+    null = null;
+
+  private successMessageRestartTimeout:
     ReturnType<typeof setTimeout> |
     null = null;
 
@@ -137,13 +181,13 @@ export class BorrowManagementComponent
       this.signalRService
         .borrowsChanged$
         .subscribe(() => {
-          this.loadBorrows();
+          this.refreshData();
         });
 
     void this.signalRService
       .startConnection();
 
-    this.loadBorrows();
+    this.refreshData();
   }
 
   ngOnDestroy(): void {
@@ -158,17 +202,59 @@ export class BorrowManagementComponent
         this.successMessageTimeout
       );
     }
+
+    if (
+      this.successMessageRestartTimeout !==
+      null
+    ) {
+      clearTimeout(
+        this.successMessageRestartTimeout
+      );
+    }
+  }
+
+  private refreshData(): void {
+    this.loadBorrowRequests();
+    this.loadBorrows();
+  }
+
+  loadBorrowRequests(): void {
+    this.borrowRequestsLoading.set(true);
+    this.errorMessage.set('');
+
+    this.borrowService
+      .getPendingBorrowRequestsForAdmin()
+      .pipe(
+        finalize(() => {
+          this.borrowRequestsLoading
+            .set(false);
+        })
+      )
+      .subscribe({
+        next: requests => {
+          this.borrowRequests.set(
+            requests
+          );
+        },
+
+        error: error => {
+          this.setLoadError(
+            error,
+            'Bekleyen ödünç talepleri yüklenirken bir hata oluştu.'
+          );
+        }
+      });
   }
 
   loadBorrows(): void {
-    this.loading.set(true);
+    this.borrowsLoading.set(true);
     this.errorMessage.set('');
 
     this.borrowService
       .getAllBorrowsForAdmin()
       .pipe(
         finalize(() => {
-          this.loading.set(false);
+          this.borrowsLoading.set(false);
         })
       )
       .subscribe({
@@ -179,20 +265,208 @@ export class BorrowManagementComponent
         },
 
         error: error => {
-          if (
-            error.status === 403
-          ) {
+          this.setLoadError(
+            error,
+            'Ödünç kayıtları yüklenirken bir hata oluştu.'
+          );
+        }
+      });
+  }
+
+  confirmApproveBorrowRequest(
+    request: AdminBorrowRequest
+  ): void {
+    this.errorMessage.set('');
+
+    this.confirmationService
+      .confirm({
+        header:
+          'Ödünç Talebini Onayla',
+
+        message:
+          `"${request.bookName}" kitabını ${request.userEmail} kullanıcısına fiziksel olarak teslim ettiğinizi onaylıyor musunuz?`,
+
+        acceptLabel:
+          'Onayla',
+
+        rejectLabel:
+          'Vazgeç',
+
+        accept: () => {
+          this.approveBorrowRequest(
+            request
+          );
+        }
+      });
+  }
+
+  private approveBorrowRequest(
+    request: AdminBorrowRequest
+  ): void {
+    this.processingBorrowRequestId.set(
+      request.borrowRequestId
+    );
+
+    this.borrowService
+      .approveBorrowRequest(
+        request.borrowRequestId
+      )
+      .pipe(
+        finalize(() => {
+          this.processingBorrowRequestId
+            .set(null);
+        })
+      )
+      .subscribe({
+        next: result => {
+          if (!result.success) {
             this.errorMessage.set(
-              'Bu sayfayı görüntülemek için Admin yetkisi gereklidir.'
+              result.message
             );
 
             return;
           }
 
-          this.errorMessage.set(
-            error.error?.message ??
-            'Ödünç kayıtları yüklenirken bir hata oluştu.'
+          this.removeBorrowRequestLocally(
+            request.borrowRequestId
           );
+
+          this.showSuccessMessage(
+            result.message
+          );
+
+          this.refreshData();
+        },
+
+        error: error => {
+          this.setOperationError(
+            error,
+            'Ödünç talebi onaylanırken bir hata oluştu.'
+          );
+        }
+      });
+  }
+
+  openRejectDialog(
+    request: AdminBorrowRequest
+  ): void {
+    this.errorMessage.set('');
+
+    this.rejectDialogErrorMessage
+      .set('');
+
+    this.rejectingBorrowRequest =
+      request;
+
+    this.rejectionReason = '';
+
+    this.rejectDialogVisible =
+      true;
+  }
+
+  closeRejectDialog(): void {
+    if (
+      this.processingBorrowRequestId() !==
+      null
+    ) {
+      return;
+    }
+
+    this.rejectDialogVisible =
+      false;
+
+    this.rejectingBorrowRequest =
+      null;
+
+    this.rejectionReason = '';
+
+    this.rejectDialogErrorMessage
+      .set('');
+  }
+
+  rejectBorrowRequest(): void {
+    this.rejectDialogErrorMessage
+      .set('');
+
+    const request =
+      this.rejectingBorrowRequest;
+
+    if (!request) {
+      return;
+    }
+
+    const normalizedReason =
+      this.rejectionReason.trim();
+
+    if (normalizedReason.length > 500) {
+      this.rejectDialogErrorMessage
+        .set(
+          'Reddetme açıklaması en fazla 500 karakter olabilir.'
+        );
+
+      return;
+    }
+
+    this.processingBorrowRequestId.set(
+      request.borrowRequestId
+    );
+
+    this.borrowService
+      .rejectBorrowRequest(
+        request.borrowRequestId,
+        normalizedReason || null
+      )
+      .pipe(
+        finalize(() => {
+          this.processingBorrowRequestId
+            .set(null);
+        })
+      )
+      .subscribe({
+        next: result => {
+          if (!result.success) {
+            this.rejectDialogErrorMessage
+              .set(
+                result.message
+              );
+
+            return;
+          }
+
+          this.removeBorrowRequestLocally(
+            request.borrowRequestId
+          );
+
+          this.rejectDialogVisible =
+            false;
+
+          this.rejectingBorrowRequest =
+            null;
+
+          this.rejectionReason = '';
+
+          this.showSuccessMessage(
+            result.message
+          );
+
+          this.refreshData();
+        },
+
+        error: error => {
+          if (error.status === 403) {
+            this.rejectDialogErrorMessage
+              .set(
+                'Bu işlem için Admin yetkisi gereklidir.'
+              );
+
+            return;
+          }
+
+          this.rejectDialogErrorMessage
+            .set(
+              error.error?.message ??
+              'Ödünç talebi reddedilirken bir hata oluştu.'
+            );
         }
       });
   }
@@ -202,16 +476,24 @@ export class BorrowManagementComponent
   ): void {
     this.errorMessage.set('');
 
+    if (!borrow.returnRequestedAt) {
+      this.errorMessage.set(
+        'Bu kitap için kullanıcı tarafından oluşturulmuş bekleyen bir iade talebi bulunmamaktadır.'
+      );
+
+      return;
+    }
+
     this.confirmationService
       .confirm({
         header:
-          'Kitabı İade Al',
+          'Fiziksel İadeyi Tamamla',
 
         message:
-          `"${borrow.bookName}" kitabının ${borrow.userEmail} kullanıcısından teslim alındığını onaylıyor musunuz?`,
+          `"${borrow.bookName}" kitabını ${borrow.userEmail} kullanıcısından fiziksel olarak teslim aldığınızı onaylıyor musunuz?`,
 
         acceptLabel:
-          'İade Al',
+          'İadeyi Tamamla',
 
         rejectLabel:
           'Vazgeç',
@@ -227,8 +509,6 @@ export class BorrowManagementComponent
   private returnBorrowForAdmin(
     borrow: AdminBorrow
   ): void {
-    this.errorMessage.set('');
-
     this.returningBorrowRecordId
       .set(
         borrow.borrowRecordId
@@ -257,22 +537,14 @@ export class BorrowManagementComponent
           this.showSuccessMessage(
             result.message
           );
+
+          this.loadBorrows();
         },
 
         error: error => {
-          if (
-            error.status === 403
-          ) {
-            this.errorMessage.set(
-              'Bu işlem için Admin yetkisi gereklidir.'
-            );
-
-            return;
-          }
-
-          this.errorMessage.set(
-            error.error?.message ??
-            'Kitap iade alınırken bir hata oluştu.'
+          this.setOperationError(
+            error,
+            'Kitabın fiziksel iadesi tamamlanırken bir hata oluştu.'
           );
         }
       });
@@ -361,6 +633,54 @@ export class BorrowManagementComponent
     return `${delayedDays} gün gecikmeli`;
   }
 
+  private removeBorrowRequestLocally(
+    borrowRequestId: number
+  ): void {
+    this.borrowRequests.update(
+      requests =>
+        requests.filter(request =>
+          request.borrowRequestId !==
+          borrowRequestId
+        )
+    );
+  }
+
+  private setLoadError(
+    error: HttpErrorResponse,
+    fallbackMessage: string
+  ): void {
+    if (error.status === 403) {
+      this.errorMessage.set(
+        'Bu sayfayı görüntülemek için Admin yetkisi gereklidir.'
+      );
+
+      return;
+    }
+
+    this.errorMessage.set(
+      error.error?.message ??
+      fallbackMessage
+    );
+  }
+
+  private setOperationError(
+    error: HttpErrorResponse,
+    fallbackMessage: string
+  ): void {
+    if (error.status === 403) {
+      this.errorMessage.set(
+        'Bu işlem için Admin yetkisi gereklidir.'
+      );
+
+      return;
+    }
+
+    this.errorMessage.set(
+      error.error?.message ??
+      fallbackMessage
+    );
+  }
+
   private showSuccessMessage(
     message: string
   ): void {
@@ -371,19 +691,42 @@ export class BorrowManagementComponent
       clearTimeout(
         this.successMessageTimeout
       );
+
+      this.successMessageTimeout =
+        null;
     }
 
-    this.successMessage.set(
-      message
-    );
+    if (
+      this.successMessageRestartTimeout !==
+      null
+    ) {
+      clearTimeout(
+        this.successMessageRestartTimeout
+      );
 
-    this.successMessageTimeout =
+      this.successMessageRestartTimeout =
+        null;
+    }
+
+    this.successMessage.set('');
+
+    this.successMessageRestartTimeout =
       setTimeout(() => {
-        this.successMessage.set('');
+        this.successMessage.set(
+          message
+        );
+
+        this.successMessageRestartTimeout =
+          null;
 
         this.successMessageTimeout =
-          null;
-      }, 3600);
+          setTimeout(() => {
+            this.successMessage.set('');
+
+            this.successMessageTimeout =
+              null;
+          }, 3600);
+      }, 0);
   }
 
   goToAdminPanel(): void {

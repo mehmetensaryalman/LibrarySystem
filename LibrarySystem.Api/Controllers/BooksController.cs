@@ -46,6 +46,32 @@ public class BooksController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("{id:int}/preview")]
+    [Authorize]
+    public async Task<IActionResult>
+        GetPreview(
+            int id,
+            CancellationToken
+                cancellationToken)
+    {
+        var preview =
+            await _bookService
+                .GetPreviewAsync(
+                    id,
+                    cancellationToken);
+
+        if (preview is null)
+        {
+            return NotFound(new
+            {
+                message =
+                    "Kitap bulunamadı."
+            });
+        }
+
+        return Ok(preview);
+    }
+
     [HttpGet("archived")]
     [Authorize(
         Roles = RoleNames.Admin)]

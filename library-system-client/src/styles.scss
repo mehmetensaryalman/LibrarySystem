@@ -12,6 +12,7 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+
 /* UYGULAMA GENEL ANA BUTON STİLİ */
 
 .app-primary-button.p-button {
@@ -38,22 +39,28 @@ body {
 }
 
 
-/* UYGULAMA GENEL ÇIKIŞ BUTONU */
+/* UYGULAMA GENEL ÇIKIŞ VE NÖTR VAZGEÇ BUTONU */
 
-.app-logout-button.p-button {
-  background: #e2e8f0;
-  border-color: #e2e8f0;
-  color: #334155;
+.app-logout-button.p-button,
+.reject-cancel-button.p-button,
+p-button.reject-cancel-button .p-button,
+.reject-cancel-button .p-button {
+  background: #e2e8f0 !important;
+  border-color: #e2e8f0 !important;
+  color: #334155 !important;
 
   transition:
     background-color 0.2s ease,
     border-color 0.2s ease;
 }
 
-.app-logout-button.p-button:not(:disabled):hover {
-  background: #cbd5e1;
-  border-color: #cbd5e1;
-  color: #1e293b;
+.app-logout-button.p-button:not(:disabled):hover,
+.reject-cancel-button.p-button:not(:disabled):hover,
+p-button.reject-cancel-button .p-button:not(:disabled):hover,
+.reject-cancel-button .p-button:not(:disabled):hover {
+  background: #cbd5e1 !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
 }
 
 

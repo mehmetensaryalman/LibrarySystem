@@ -15,6 +15,12 @@ public interface IBookService
     Task<List<ArchivedBookResponseDto>>
         GetArchivedAsync();
 
+    Task<BookPreviewResponseDto?>
+        GetPreviewAsync(
+            int id,
+            CancellationToken
+                cancellationToken = default);
+
     Task<BookResponseDto>
         CreateAsync(
             CreateBookRequestDto request);

@@ -118,3 +118,8 @@
     justify-content: flex-start;
   }
 }
+
+:host ::ng-deep
+.p-datatable-tbody td p-button + p-button {
+  margin-left: 0.55rem;
+}

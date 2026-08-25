@@ -9,6 +9,11 @@ public interface IBorrowService
         int bookId);
 
     Task<OperationResultDto>
+        CancelBorrowRequestAsync(
+            string userId,
+            int borrowRequestId);
+
+    Task<OperationResultDto>
         RequestReturnAsync(
             string userId,
             int bookId);

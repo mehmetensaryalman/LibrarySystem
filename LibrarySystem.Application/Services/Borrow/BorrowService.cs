@@ -14,34 +14,47 @@ namespace LibrarySystem.Application.Services.Borrow;
 public class BorrowService :
     IBorrowService
 {
-    private readonly IBorrowRepository _borrowRepository;
-    private readonly INotificationService _notificationService;
-    private readonly IRealtimeNotifier _realtimeNotifier;
+    private readonly
+        IBorrowRepository _borrowRepository;
+
+    private readonly
+        INotificationService _notificationService;
+
+    private readonly
+        IRealtimeNotifier _realtimeNotifier;
 
     public BorrowService(
         IBorrowRepository borrowRepository,
         INotificationService notificationService,
         IRealtimeNotifier realtimeNotifier)
     {
-        _borrowRepository = borrowRepository;
-        _notificationService = notificationService;
-        _realtimeNotifier = realtimeNotifier;
+        _borrowRepository =
+            borrowRepository;
+
+        _notificationService =
+            notificationService;
+
+        _realtimeNotifier =
+            realtimeNotifier;
     }
 
-    public async Task<OperationResultDto> BorrowAsync(
-        string userId,
-        int bookId)
+    public async Task<OperationResultDto>
+        BorrowAsync(
+            string userId,
+            int bookId)
     {
         var book =
-            await _borrowRepository.GetBookByIdAsync(
-                bookId);
+            await _borrowRepository
+                .GetBookByIdAsync(
+                    bookId);
 
         if (book is null)
         {
             return new OperationResultDto
             {
                 Success = false,
-                Message = "Kitap bulunamadı."
+                Message =
+                    "Kitap bulunamadı."
             };
         }
 
@@ -77,8 +90,10 @@ public class BorrowService :
                 Success = false,
                 Message =
                     "Aktif cezanız bulunduğu için yeni ödünç talebi oluşturamazsınız.",
+
                 PenaltyEndDate =
-                    AsUtc(activePenaltyEndDate)
+                    AsUtc(
+                        activePenaltyEndDate)
             };
         }
 
@@ -94,24 +109,7 @@ public class BorrowService :
             {
                 Success = false,
                 Message =
-                    "Bu kitap zaten aktif olarak üzerinizde bulunmaktadır."
-            };
-        }
-
-        var activeBorrowCount =
-            await _borrowRepository
-                .GetActiveBorrowCountAsync(
-                    userId);
-
-        if (
-            activeBorrowCount >=
-            BorrowRules.MaxActiveBorrowCount)
-        {
-            return new OperationResultDto
-            {
-                Success = false,
-                Message =
-                    $"Aynı anda en fazla {BorrowRules.MaxActiveBorrowCount} kitap ödünç alabilirsiniz. Yeni ödünç talebi oluşturabilmek için mevcut kitaplarınızdan en az birini fiziksel olarak iade etmeniz gerekmektedir."
+                    "Bu kitap zaten aktif olarak alınmış durumdadır."
             };
         }
 
@@ -146,13 +144,25 @@ public class BorrowService :
             {
                 UserId = userId,
                 BookId = bookId,
+
                 Status =
-                    BorrowRequestStatus.Pending,
-                RequestedAt = requestDate,
-                ProcessedAt = null,
-                ProcessedByAdminUserId = null,
-                BorrowRecordId = null,
-                RejectionReason = null
+                    BorrowRequestStatus
+                        .Pending,
+
+                RequestedAt =
+                    requestDate,
+
+                ProcessedAt =
+                    null,
+
+                ProcessedByAdminUserId =
+                    null,
+
+                BorrowRecordId =
+                    null,
+
+                RejectionReason =
+                    null
             };
 
         var writeStatus =
@@ -170,6 +180,32 @@ public class BorrowService :
                 Success = false,
                 Message =
                     "Bu kitap için zaten bekleyen bir ödünç talebiniz bulunmaktadır."
+            };
+        }
+
+        if (
+            writeStatus ==
+            BorrowRequestWriteStatus
+                .BorrowLimitReached)
+        {
+            return new OperationResultDto
+            {
+                Success = false,
+                Message =
+                    $"Aktif ödünçleriniz ve bekleyen ödünç talepleriniz birlikte en fazla {BorrowRules.MaxActiveBorrowCount} olabilir. Yeni talep oluşturabilmek için bekleyen taleplerinizden birinin reddedilmesi veya aktif kitaplarınızdan birinin fiziksel olarak iade edilmesi gerekmektedir."
+            };
+        }
+
+        if (
+            writeStatus ==
+            BorrowRequestWriteStatus
+                .CancellationCooldownActive)
+        {
+            return new OperationResultDto
+            {
+                Success = false,
+                Message =
+                    "Bu kitap için oluşturduğunuz talebi iptal ettikten sonra 5 dakika beklemelisiniz."
             };
         }
 
@@ -209,6 +245,9 @@ public class BorrowService :
         await _realtimeNotifier
             .NotifyAdminNotificationsChangedAsync();
 
+        await _realtimeNotifier
+            .NotifyBorrowsChangedAsync();
+
         return new OperationResultDto
         {
             Success = true,
@@ -217,10 +256,46 @@ public class BorrowService :
         };
     }
 
+    public async Task<OperationResultDto>
+        CancelBorrowRequestAsync(
+            string userId,
+            int borrowRequestId)
+    {
+        var writeStatus =
+            await _borrowRepository
+                .CancelBorrowRequestAsync(
+                    userId,
+                    borrowRequestId,
+                    DateTime.UtcNow);
+
+        if (
+            writeStatus ==
+            CancelBorrowRequestWriteStatus
+                .PendingRequestNotFound)
+        {
+            return new OperationResultDto
+            {
+                Success = false,
+                Message =
+                    "Bekleyen ödünç talebi bulunamadı, talep size ait değil veya daha önce işlenmiş."
+            };
+        }
+
+        await _realtimeNotifier
+            .NotifyBorrowsChangedAsync();
+
+        return new OperationResultDto
+        {
+            Success = true,
+            Message =
+                $"Ödünç talebiniz başarıyla iptal edildi. Yeni bir ödünç talebi oluşturabilmek için {BorrowRequestRules.CancellationCooldownMinutes} dakika beklemeniz gerekmektedir."
+        };
+    }
+
     public async Task<
-    List<MyBorrowRequestResponseDto>>
-    GetMyPendingBorrowRequestsAsync(
-        string userId)
+        List<MyBorrowRequestResponseDto>>
+        GetMyPendingBorrowRequestsAsync(
+            string userId)
     {
         var requests =
             await _borrowRepository
@@ -275,7 +350,8 @@ public class BorrowService :
                         ? email
                         : "Bilinmiyor";
 
-                return new AdminBorrowRequestResponseDto
+                return new
+                    AdminBorrowRequestResponseDto
                 {
                     BorrowRequestId =
                         request.Id,
@@ -379,6 +455,7 @@ public class BorrowService :
                     Success = false,
                     Message =
                         "Kullanıcının aktif ödünç alma cezası bulunduğu için talep onaylanamaz.",
+
                     PenaltyEndDate =
                         AsUtc(
                             penaltyEndDate)
@@ -468,6 +545,9 @@ public class BorrowService :
             };
         }
 
+        await _realtimeNotifier
+            .NotifyBorrowsChangedAsync();
+
         return new OperationResultDto
         {
             Success = true,
@@ -498,7 +578,8 @@ public class BorrowService :
         }
 
         if (
-            activeBorrow.ReturnRequestedAt
+            activeBorrow
+                .ReturnRequestedAt
                 .HasValue)
         {
             return new OperationResultDto
@@ -775,8 +856,8 @@ public class BorrowService :
         var userEmails =
             await _borrowRepository
                 .GetUserEmailsAsync(
-                    borrowRecords
-                        .Select(record =>
+                    borrowRecords.Select(
+                        record =>
                             record.UserId));
 
         return borrowRecords
@@ -789,7 +870,8 @@ public class BorrowService :
                         ? email
                         : "Bilinmiyor";
 
-                return new AdminBorrowResponseDto
+                return new
+                    AdminBorrowResponseDto
                 {
                     BorrowRecordId =
                         record.Id,

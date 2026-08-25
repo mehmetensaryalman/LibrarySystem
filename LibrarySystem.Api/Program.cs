@@ -17,6 +17,7 @@ using LibrarySystem.Infrastructure.Persistence;
 using LibrarySystem.Infrastructure.Repositories;
 using LibrarySystem.Infrastructure.Seed;
 using LibrarySystem.Infrastructure.Services.Auth;
+using LibrarySystem.Infrastructure.Services.Books;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -116,6 +117,28 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<
     IBookService,
     BookService>();
+
+builder.Services.Configure<
+    GoogleBooksOptions>(
+    builder.Configuration
+        .GetSection(
+            "GoogleBooks"));
+
+builder.Services.AddMemoryCache();
+
+builder.Services
+    .AddHttpClient<
+        IBookMetadataProvider,
+        GoogleBooksMetadataProvider>(
+        client =>
+        {
+            client.BaseAddress =
+                new Uri(
+                    "https://www.googleapis.com/books/v1/");
+
+            client.Timeout =
+                TimeSpan.FromSeconds(10);
+        });
 
 builder.Services.AddScoped<
     IBorrowRepository,

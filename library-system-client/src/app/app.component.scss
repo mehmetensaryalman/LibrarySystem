@@ -1,0 +1,98 @@
+/*
+ * Normal dialoglardaki tüm
+ * "Vazgeç" butonları.
+ */
+::ng-deep
+p-button[label="Vazgeç"] .p-button {
+  border-color:
+    #ef4444 !important;
+
+  background:
+    #ef4444 !important;
+
+  color:
+    #ffffff !important;
+}
+
+::ng-deep
+p-button[label="Vazgeç"]
+.p-button:hover {
+  border-color:
+    #dc2626 !important;
+
+  background:
+    #dc2626 !important;
+}
+
+::ng-deep
+p-button[label="Vazgeç"]
+.p-button:active {
+  border-color:
+    #b91c1c !important;
+
+  background:
+    #b91c1c !important;
+}
+
+::ng-deep
+p-button[label="Vazgeç"]
+.p-button:focus-visible {
+  box-shadow:
+    0 0 0 0.2rem
+    #ef444433 !important;
+}
+
+
+/*
+ * ConfirmationService tarafından
+ * oluşturulan onay pencerelerindeki
+ * "Vazgeç" butonları.
+ */
+::ng-deep
+.p-confirmdialog-reject-button,
+::ng-deep
+.p-confirmdialog
+[data-pc-section="rejectbutton"] {
+  border-color:
+    #ef4444 !important;
+
+  background:
+    #ef4444 !important;
+
+  color:
+    #ffffff !important;
+}
+
+::ng-deep
+.p-confirmdialog-reject-button:hover,
+::ng-deep
+.p-confirmdialog
+[data-pc-section="rejectbutton"]:hover {
+  border-color:
+    #dc2626 !important;
+
+  background:
+    #dc2626 !important;
+}
+
+::ng-deep
+.p-confirmdialog-reject-button:active,
+::ng-deep
+.p-confirmdialog
+[data-pc-section="rejectbutton"]:active {
+  border-color:
+    #b91c1c !important;
+
+  background:
+    #b91c1c !important;
+}
+
+::ng-deep
+.p-confirmdialog-reject-button:focus-visible,
+::ng-deep
+.p-confirmdialog
+[data-pc-section="rejectbutton"]:focus-visible {
+  box-shadow:
+    0 0 0 0.2rem
+    #ef444433 !important;
+}

@@ -1,287 +1,448 @@
+:host {
+  display: block;
+}
+
 .page {
-  min-height: 100vh;
-  padding: 2rem;
-  background: #f5f7fa;
+  min-height: calc(100vh - 5.5rem);
+  padding:
+    clamp(1.75rem, 4vw, 3.5rem)
+    clamp(1.25rem, 4vw, 4.75rem)
+    4rem;
+  background:
+    radial-gradient(
+      circle at 8% 5%,
+      #ccfbf180,
+      transparent 22rem
+    ),
+    #f4f7fb;
+  color: #1e293b;
 }
 
 .page-header {
-  width: min(1400px, 100%);
+  max-width: 108rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
   margin: 0 auto 2rem;
-
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-
-  h1,
-  p {
-    margin: 0;
-  }
-
-  p {
-    margin-top: 0.4rem;
-    color: #64748b;
-  }
 }
 
-.header-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+.page-header > div:first-child {
+  padding-left: 1rem;
+  border-left: 0.3rem solid #14b8a6;
 }
 
-.table-card {
-  width: min(1400px, 100%);
-  margin: 0 auto;
-  padding: 1rem;
-
-  border-radius: 1rem;
-  background: white;
-
-  box-shadow:
-    0 10px 30px
-    rgba(0, 0, 0, 0.06);
+.page-header h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size:
+    clamp(2rem, 3vw, 2.65rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
 }
 
-.book-list-controls {
-  display: grid;
-
-  grid-template-columns:
-    minmax(16rem, 1fr)
-    minmax(12rem, 15rem)
-    minmax(13rem, 17rem)
-    auto;
-
-  gap: 1rem;
-  align-items: end;
-
-  margin-bottom: 1rem;
-}
-
-.filter-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-
-  label {
-    font-weight: 600;
-    color: #334155;
-  }
-
-  input {
-    width: 100%;
-  }
-}
-
-.filter-select {
-  width: 100%;
-}
-
-.filter-clear-action {
-  display: flex;
-  align-items: flex-end;
-}
-
-.results-summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  gap: 1rem;
-
-  margin-bottom: 1rem;
-
+.page-header p {
+  margin: 0.45rem 0 0;
   color: #64748b;
-  font-size: 0.95rem;
+  font-weight: 600;
 }
 
-.table-footer {
-  position: relative;
-
+.header-actions,
+.row-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.row-actions:has(
+  > p-button:first-child:not([severity])
+) {
+  flex-wrap: nowrap;
+}
+
+.row-actions:has(
+  > p-button:first-child:not([severity])
+) > p-button:first-child {
+  width: 11rem;
+  flex: 0 0 11rem;
+  order: 1;
+}
+
+.row-actions:has(
+  > p-button:first-child:not([severity])
+) > app-book-preview {
+  flex: 0 0 auto;
+  order: 2;
+}
+
+.row-actions:has(
+  > p-button:first-child:not([severity])
+) > p-button:not(:first-child) {
+  flex: 0 0 auto;
+  order: 3;
+}
+
+:host ::ng-deep
+.row-actions .p-button {
+  min-height: 2.4rem;
+  padding:
+    0.5rem
+    0.8rem;
+  border-radius: 0.55rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+:host ::ng-deep
+.row-actions:has(
+  > p-button:first-child:not([severity])
+) > p-button:first-child .p-button {
+  width: 100%;
+  min-width: 0;
   justify-content: center;
-
-  min-height: 4.5rem;
-
-  margin-top: 1rem;
-  padding-top: 0.75rem;
-}
-
-.paginator-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.create-book-action {
-  position: absolute;
-
-  right: 0;
-  top: 50%;
-
-  transform:
-    translateY(-50%);
-
-  display: flex;
-  align-items: center;
+  white-space: nowrap;
 }
 
 .error-message,
 .success-message {
-  width: min(1400px, 100%);
+  max-width: 108rem;
   margin: 0 auto 1rem;
-
-  padding: 0.75rem 1rem;
-
-  border-radius: 0.5rem;
+  padding: 0.8rem;
+  border-radius: 0.65rem;
 }
 
 .error-message {
-  background: #fee2e2;
-  color: #991b1b;
+  background: #fef2f2;
+  color: #b91c1c;
 }
 
 .success-message {
-  background: #dcfce7;
-  color: #166534;
-
-  animation:
-    success-message-fade-out
-    0.6s
-    ease
-    3s
-    forwards;
+  background: #ecfdf5;
+  color: #047857;
 }
 
-@keyframes success-message-fade-out {
-  from {
-    opacity: 1;
-  }
-
-  to {
-    opacity: 0;
-  }
+.table-card {
+  max-width: 108rem;
+  margin: 0 auto;
+  padding:
+    clamp(1rem, 2vw, 1.5rem);
+  overflow: visible;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.3rem;
+  background: #ffffff;
+  box-shadow:
+    0 1.25rem 3rem
+    #0f172a14;
 }
 
-.row-actions {
+.book-list-controls {
+  display: grid;
+  grid-template-columns:
+    minmax(18rem, 1.8fr)
+    minmax(13rem, 0.65fr)
+    minmax(15rem, 0.75fr)
+    auto;
+  gap: 1rem;
+  align-items: end;
+  padding-bottom: 1.2rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.filter-field {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.filter-field label {
+  color: #334155;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.filter-field input {
+  width: 100%;
+  min-height: 2.8rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.65rem;
+}
+
+.filter-field input:focus {
+  border-color: #14b8a6;
+  box-shadow:
+    0 0 0 0.2rem
+    #14b8a621;
+  outline: 0;
+}
+
+.filter-clear-action {
+  display: flex;
+}
+
+.results-summary {
+  min-height: 3.7rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 0.15rem;
+  color: #64748b;
+  font-size: 0.91rem;
+  font-weight: 600;
 }
 
 .book-form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.15rem;
+  width: 100%;
+  padding-top: 0.15rem;
 }
 
 .form-field {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-
-  label {
-    font-weight: 600;
-  }
-
-  input {
-    width: 100%;
-  }
+  gap: 0.5rem;
+  width: 100%;
 }
 
-.dialog-actions {
-  margin-top: 0.5rem;
-
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
+.form-field label {
+  color: #334155;
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
-:host ::ng-deep
-.p-confirmdialog-content {
-  align-items: flex-start;
+.form-field > input {
+  width: 100%;
+  min-height: 2.85rem;
+  border-color: #cbd5e1;
+  border-radius: 0.65rem;
 }
 
-:host ::ng-deep
-.p-confirmdialog-message {
-  margin-left: 0;
-
-  text-align: left;
-  line-height: 1.5;
+.form-field > input:focus {
+  border-color: #14b8a6;
+  box-shadow:
+    0 0 0 0.2rem
+    #14b8a621;
+  outline: 0;
 }
 
 .dialog-error-message {
-  padding: 0.75rem 1rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #fecaca;
+  border-radius: 0.65rem;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
 
-  border-radius: 0.5rem;
+.dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  margin-top: 0.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
 
-  background: #fee2e2;
-  color: #991b1b;
+:host ::ng-deep .filter-select {
+  width: 100%;
+  min-height: 2.8rem;
+  border-color: #cbd5e1;
+  border-radius: 0.65rem;
+}
+
+/*
+ * P-select içerisindeki seçili metni
+ * gerçek dikey merkeze yerleştirir.
+ */
+:host ::ng-deep
+.filter-select .p-select-label {
+  height: 2.75rem;
+  display: flex;
+  align-items: center;
+  padding:
+    0
+    0.85rem;
+  line-height: 1.2;
+}
+
+/*
+ * Sağ taraftaki açılır menü okunu
+ * kutunun dikey merkezine yerleştirir.
+ */
+:host ::ng-deep
+.filter-select .p-select-dropdown {
+  height: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:host ::ng-deep
+.book-form .p-inputnumber {
+  width: 100%;
+}
+
+:host ::ng-deep
+.book-form .p-inputnumber-input {
+  width: 100%;
+  min-height: 2.85rem;
+  border-color: #cbd5e1;
+  border-radius: 0.65rem;
+}
+
+:host ::ng-deep
+.book-form .p-inputnumber-input:focus {
+  border-color: #14b8a6;
+  box-shadow:
+    0 0 0 0.2rem
+    #14b8a621;
+}
+
+:host ::ng-deep .p-dialog {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.15rem;
+  box-shadow:
+    0 1.5rem 4rem
+    #0f172a33;
+}
+
+:host ::ng-deep .p-dialog-header {
+  padding: 1.4rem 1.5rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+:host ::ng-deep .p-dialog-title {
+  color: #0f172a;
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+:host ::ng-deep .p-dialog-content {
+  padding: 1.35rem 1.5rem 1.5rem;
+  background: #ffffff;
+}
+
+:host ::ng-deep
+.p-datatable-thead > tr > th {
+  padding: 0.9rem 1rem;
+  border-color: #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+:host ::ng-deep
+.p-datatable-tbody > tr:hover {
+  background: #f0fdfa;
+}
+
+:host ::ng-deep
+.p-datatable-tbody > tr > td {
+  padding: 0.85rem 1rem;
+  border-color: #e2e8f0;
+  background: transparent;
+  color: #334155;
+}
+
+.table-footer {
+  position: relative;
+  min-height: 5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 1rem;
+}
+
+.paginator-container {
+  display: flex;
+  justify-content: center;
+}
+
+.create-book-action {
+  position: absolute;
+  right: 0;
+  bottom: 0.35rem;
+}
+
+:host ::ng-deep .p-paginator {
+  flex-wrap: wrap;
+  border: 0;
+  background: transparent;
 }
 
 @media (max-width: 1100px) {
   .book-list-controls {
     grid-template-columns:
-      1fr
-      1fr;
-  }
-
-  .filter-clear-action {
-    align-self: end;
-  }
-}
-
-@media (max-width: 850px) {
-  .table-footer {
-    position: static;
-
-    flex-direction: column;
-    gap: 0.75rem;
-
-    min-height: auto;
+      1fr 1fr;
   }
 
   .create-book-action {
     position: static;
-
-    transform: none;
-
-    width: 100%;
-    justify-content: flex-end;
+    margin-left: 1rem;
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 700px) {
   .page {
-    padding: 1rem;
+    padding:
+      1.25rem
+      0.85rem
+      2.5rem;
   }
 
-  .page-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .header-actions {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .book-list-controls {
-    grid-template-columns:
-      1fr;
-  }
-
+  .page-header,
   .results-summary {
     align-items: flex-start;
     flex-direction: column;
-    gap: 0.25rem;
+  }
+
+  .book-list-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .table-card {
+    padding: 0.85rem;
+  }
+
+  .row-actions {
+    min-width: 27rem;
+  }
+
+  .table-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .paginator-container {
+    overflow-x: auto;
   }
 
   .create-book-action {
-    justify-content: center;
+    width: 100%;
+    margin: 0;
+  }
+
+  .dialog-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  :host ::ng-deep
+  .create-book-action .p-button,
+  :host ::ng-deep
+  .dialog-actions .p-button {
+    width: 100%;
   }
 }
