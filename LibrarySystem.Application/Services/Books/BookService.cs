@@ -356,11 +356,36 @@ public class BookService : IBookService
             };
         }
 
+        var hasPendingBorrowRequest =
+            await _bookRepository
+                .HasPendingBorrowRequestAsync(
+                    id);
+
+        if (hasPendingBorrowRequest)
+        {
+            return new DeleteBookResult
+            {
+                Status =
+                    DeleteBookStatus
+                        .ActiveBorrowExists,
+
+                Message =
+                    "Bu kitap için bekleyen ödünç talebi bulunduğu için katalogdan kaldırılamaz."
+            };
+        }
+
         var hasBorrowHistory =
             await _bookRepository
                 .HasBorrowHistoryAsync(id);
 
-        if (hasBorrowHistory)
+        var hasBorrowRequestHistory =
+            await _bookRepository
+                .HasBorrowRequestHistoryAsync(
+                    id);
+
+        if (
+            hasBorrowHistory ||
+            hasBorrowRequestHistory)
         {
             await _bookRepository
                 .ArchiveAsync(book);
@@ -374,7 +399,7 @@ public class BookService : IBookService
                     DeleteBookStatus.Archived,
 
                 Message =
-                    "Kitap ödünç geçmişi bulunduğu için silinmedi, arşivlendi."
+                    "Kitabın ödünç veya talep geçmişi bulunduğu için kayıt silinmedi, arşivlendi."
             };
         }
 

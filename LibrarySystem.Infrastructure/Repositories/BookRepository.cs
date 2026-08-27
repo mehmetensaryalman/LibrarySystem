@@ -2,6 +2,7 @@
 using LibrarySystem.Application.Common.Models;
 using LibrarySystem.Application.Interfaces.Repositories;
 using LibrarySystem.Domain.Entities;
+using LibrarySystem.Domain.Enums;
 using LibrarySystem.Infrastructure.Persistence;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -250,6 +251,33 @@ public class BookRepository : IBookRepository
             .BorrowRecords
             .AnyAsync(record =>
                 record.BookId ==
+                    bookId);
+    }
+
+    public async Task<bool>
+        HasPendingBorrowRequestAsync(
+            int bookId)
+    {
+        return await _dbContext
+            .BorrowRequests
+            .AsNoTracking()
+            .AnyAsync(request =>
+                request.BookId ==
+                    bookId &&
+                request.Status ==
+                    BorrowRequestStatus
+                        .Pending);
+    }
+
+    public async Task<bool>
+        HasBorrowRequestHistoryAsync(
+            int bookId)
+    {
+        return await _dbContext
+            .BorrowRequests
+            .AsNoTracking()
+            .AnyAsync(request =>
+                request.BookId ==
                     bookId);
     }
 

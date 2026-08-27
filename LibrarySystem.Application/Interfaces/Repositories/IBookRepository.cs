@@ -37,6 +37,12 @@ public interface IBookRepository
     Task<bool> HasBorrowHistoryAsync(
         int bookId);
 
+    Task<bool> HasPendingBorrowRequestAsync(
+        int bookId);
+
+    Task<bool> HasBorrowRequestHistoryAsync(
+        int bookId);
+
     Task ArchiveAsync(Book book);
 
     Task RestoreAsync(Book book);
