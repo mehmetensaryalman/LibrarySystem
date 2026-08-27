@@ -31,6 +31,10 @@ import {
 } from './pages/auth/change-password/change-password.component';
 
 import {
+  TelegramNotificationsComponent
+} from './pages/account/telegram-notifications/telegram-notifications.component';
+
+import {
   BookListComponent
 } from './pages/books/book-list/book-list.component';
 
@@ -75,6 +79,14 @@ export const routes: Routes = [
   {
     path: 'change-password',
     component: ChangePasswordComponent,
+    canActivate: [
+      authGuard
+    ]
+  },
+  {
+    path: 'telegram-notifications',
+    component:
+      TelegramNotificationsComponent,
     canActivate: [
       authGuard
     ]

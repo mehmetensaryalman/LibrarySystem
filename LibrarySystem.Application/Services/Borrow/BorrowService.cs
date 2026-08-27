@@ -6,6 +6,7 @@ using LibrarySystem.Application.Interfaces.Borrow;
 using LibrarySystem.Application.Interfaces.Notifications;
 using LibrarySystem.Application.Interfaces.Realtime;
 using LibrarySystem.Application.Interfaces.Repositories;
+using LibrarySystem.Application.Interfaces.Telegram;
 using LibrarySystem.Domain.Entities;
 using LibrarySystem.Domain.Enums;
 
@@ -23,20 +24,29 @@ public class BorrowService :
     private readonly
         IRealtimeNotifier _realtimeNotifier;
 
+    private readonly
+    ITelegramNotificationSender
+        _telegramNotificationSender;
+
     public BorrowService(
         IBorrowRepository borrowRepository,
         INotificationService notificationService,
-        IRealtimeNotifier realtimeNotifier)
-    {
-        _borrowRepository =
-            borrowRepository;
+        IRealtimeNotifier realtimeNotifier,
+        ITelegramNotificationSender
+            telegramNotificationSender)
+        {
+            _borrowRepository =
+                borrowRepository;
 
-        _notificationService =
-            notificationService;
+            _notificationService =
+                notificationService;
 
-        _realtimeNotifier =
-            realtimeNotifier;
-    }
+            _realtimeNotifier =
+                realtimeNotifier;
+
+            _telegramNotificationSender =
+                telegramNotificationSender;
+        }
 
     public async Task<OperationResultDto>
         BorrowAsync(
@@ -438,6 +448,12 @@ public class BorrowService :
             int borrowRequestId,
             string adminUserId)
     {
+
+        var pendingRequest =
+            await _borrowRepository
+                .GetPendingBorrowRequestByIdAsync(
+                    borrowRequestId);
+
         var result =
             await _borrowRepository
                 .ApproveBorrowRequestAsync(
@@ -527,14 +543,25 @@ public class BorrowService :
                 };
 
             case
-                ApproveBorrowRequestWriteStatus
-                    .Success:
+            ApproveBorrowRequestWriteStatus
+                .Success:
 
                 await _realtimeNotifier
                     .NotifyBooksChangedAsync();
 
                 await _realtimeNotifier
                     .NotifyBorrowsChangedAsync();
+
+                if (pendingRequest is not null)
+                {
+                    await _telegramNotificationSender
+                        .SendToUserAsync(
+                            pendingRequest.UserId,
+
+                            "📚 Ödünç Talebiniz Onaylandı\n\n" +
+                            $"\"{pendingRequest.Book.Name}\" kitabı kütüphane görevlisi tarafından size teslim edildi.\n\n" +
+                            "Kitabın iade süresi 7 gündür.");
+                }
 
                 return new OperationResultDto
                 {
@@ -555,10 +582,10 @@ public class BorrowService :
     }
 
     public async Task<OperationResultDto>
-        RejectBorrowRequestAsync(
-            int borrowRequestId,
-            string adminUserId,
-            string? rejectionReason)
+    RejectBorrowRequestAsync(
+        int borrowRequestId,
+        string adminUserId,
+        string? rejectionReason)
     {
         var normalizedReason =
             string.IsNullOrWhiteSpace(
@@ -577,6 +604,11 @@ public class BorrowService :
                     "Reddetme açıklaması en fazla 500 karakter olabilir."
             };
         }
+
+        var pendingRequest =
+            await _borrowRepository
+                .GetPendingBorrowRequestByIdAsync(
+                    borrowRequestId);
 
         var result =
             await _borrowRepository
@@ -601,6 +633,24 @@ public class BorrowService :
 
         await _realtimeNotifier
             .NotifyBorrowsChangedAsync();
+
+        if (pendingRequest is not null)
+        {
+            var telegramMessage =
+                "❌ Ödünç Talebiniz Reddedildi\n\n" +
+                $"\"{pendingRequest.Book.Name}\" kitabı için oluşturduğunuz ödünç talebi kütüphane görevlisi tarafından reddedildi.";
+
+            if (normalizedReason is not null)
+            {
+                telegramMessage +=
+                    $"\n\nRet nedeni: {normalizedReason}";
+            }
+
+            await _telegramNotificationSender
+                .SendToUserAsync(
+                    pendingRequest.UserId,
+                    telegramMessage);
+        }
 
         return new OperationResultDto
         {

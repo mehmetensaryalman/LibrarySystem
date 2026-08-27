@@ -1,4 +1,5 @@
 using System.Text;
+using LibrarySystem.Api.BackgroundServices;
 using LibrarySystem.Api.Hubs;
 using LibrarySystem.Api.OpenApi;
 using LibrarySystem.Api.Realtime;
@@ -10,9 +11,11 @@ using LibrarySystem.Application.Interfaces.Email;
 using LibrarySystem.Application.Interfaces.Notifications;
 using LibrarySystem.Application.Interfaces.Realtime;
 using LibrarySystem.Application.Interfaces.Repositories;
+using LibrarySystem.Application.Interfaces.Telegram;
 using LibrarySystem.Application.Services.Books;
 using LibrarySystem.Application.Services.Borrow;
 using LibrarySystem.Application.Services.Notifications;
+using LibrarySystem.Application.Services.Telegram;
 using LibrarySystem.Infrastructure.Identity;
 using LibrarySystem.Infrastructure.Persistence;
 using LibrarySystem.Infrastructure.Repositories;
@@ -20,6 +23,7 @@ using LibrarySystem.Infrastructure.Seed;
 using LibrarySystem.Infrastructure.Services.Auth;
 using LibrarySystem.Infrastructure.Services.Books;
 using LibrarySystem.Infrastructure.Services.Email;
+using LibrarySystem.Infrastructure.Services.Telegram;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -123,6 +127,32 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<
     IEmailService,
     SmtpEmailService>();
+
+builder.Services.Configure<
+    TelegramBotOptions>(
+    builder.Configuration
+        .GetSection(
+            TelegramBotOptions
+                .SectionName));
+
+builder.Services.AddSingleton<
+    ITelegramBotService,
+    TelegramBotService>();
+
+builder.Services.AddHostedService<
+    TelegramBotPollingService>();
+
+builder.Services.AddScoped<
+    ITelegramConnectionRepository,
+    TelegramConnectionRepository>();
+
+builder.Services.AddScoped<
+    ITelegramConnectionService,
+    TelegramConnectionService>();
+
+builder.Services.AddScoped<
+    ITelegramNotificationSender,
+    TelegramNotificationSender>();
 
 builder.Services.AddScoped<
     IBookRepository,

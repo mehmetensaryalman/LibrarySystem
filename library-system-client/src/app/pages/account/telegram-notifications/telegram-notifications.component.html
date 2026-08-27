@@ -1,0 +1,206 @@
+<div class="telegram-page">
+
+  <section class="telegram-card">
+
+    <div class="telegram-heading">
+
+      <div
+        class="telegram-logo"
+        aria-hidden="true"
+      >
+        ✈
+      </div>
+
+      <div>
+        <h1>Kütüphane Sistemi</h1>
+        <h2>Telegram Bildirimleri</h2>
+      </div>
+
+    </div>
+
+    <p class="page-description">
+      Ödünç ve iade hatırlatmalarınızı
+      ücretsiz olarak Telegram üzerinden
+      alın.
+    </p>
+
+    @if (errorMessage()) {
+
+      <div class="error-message">
+        {{ errorMessage() }}
+      </div>
+
+    }
+
+    @if (successMessage()) {
+
+      <div class="success-message">
+        {{ successMessage() }}
+      </div>
+
+    }
+
+    @if (loading()) {
+
+      <div class="loading-state">
+        Telegram bağlantısı kontrol
+        ediliyor...
+      </div>
+
+    } @else if (status()?.isConnected) {
+
+      <div class="connected-panel">
+
+        <div class="connected-badge">
+          <span aria-hidden="true">✓</span>
+          Bağlantı Aktif
+        </div>
+
+        <div class="connection-details">
+
+          <div>
+            <span>Telegram Hesabı</span>
+            <strong>
+              @if (
+                status()?.telegramUsername
+              ) {
+                &#64;{{
+                  status()?.telegramUsername
+                }}
+              } @else {
+                Bağlı Telegram hesabı
+              }
+            </strong>
+          </div>
+
+          <div>
+            <span>Bağlantı Tarihi</span>
+            <strong>
+              {{
+                status()?.connectedAt |
+                  date:'dd.MM.yyyy HH:mm'
+              }}
+            </strong>
+          </div>
+
+        </div>
+
+        <p>
+          Ödünç işlemleri ve iade
+          hatırlatmaları bu Telegram
+          hesabına gönderilecektir.
+        </p>
+
+        <p-button
+          label="Bağlantıyı Kaldır"
+          severity="danger"
+          [loading]="actionLoading()"
+          [disabled]="actionLoading()"
+          (onClick)="confirmDisconnect()"
+        ></p-button>
+
+      </div>
+
+    } @else {
+
+      <div class="disconnected-panel">
+
+        <div class="status-label">
+          Telegram hesabı bağlı değil
+        </div>
+
+        <ol class="connection-steps">
+          <li>Bağlantı kodu oluşturun.</li>
+          <li>
+            Telegram’da
+            <strong>&#64;KyamlamBot</strong>
+            sohbetini açın.
+          </li>
+          <li>
+            Oluşturulan komutu bota
+            gönderin.
+          </li>
+        </ol>
+
+        @if (connectionLink()) {
+
+          <div class="connection-code-panel">
+
+            <span class="code-label">
+              Telegram’a gönderilecek komut
+            </span>
+
+            <code>
+              {{ connectionCommand() }}
+            </code>
+
+            <div class="connection-actions">
+
+              <p-button
+                [label]="
+                  commandCopied()
+                    ? 'Kopyalandı'
+                    : 'Komutu Kopyala'
+                "
+                styleClass="app-primary-button"
+                (onClick)="copyCommand()"
+              ></p-button>
+
+              <p-button
+                label="Telegram'da Aç"
+                severity="secondary"
+                (onClick)="openTelegram()"
+              ></p-button>
+
+              <p-button
+                label="Bağlantıyı Kontrol Et"
+                severity="secondary"
+                [loading]="
+                  checkingConnection()
+                "
+                [disabled]="
+                  checkingConnection()
+                "
+                (onClick)="checkConnection()"
+              ></p-button>
+
+            </div>
+
+            <small>
+              Kodun geçerlilik süresi:
+              {{
+                connectionLink()?.expiresAt |
+                  date:'dd.MM.yyyy HH:mm'
+              }}
+            </small>
+
+          </div>
+
+        } @else {
+
+          <p-button
+            label="Telegram Bağlantısı Oluştur"
+            styleClass="app-primary-button connect-button"
+            [loading]="actionLoading()"
+            [disabled]="actionLoading()"
+            (onClick)="createConnectionLink()"
+          ></p-button>
+
+        }
+
+      </div>
+
+    }
+
+    <div class="back-link">
+      <a routerLink="/books">
+        Kitap listesine dön
+      </a>
+    </div>
+
+  </section>
+
+</div>
+
+<p-confirmdialog>
+</p-confirmdialog>

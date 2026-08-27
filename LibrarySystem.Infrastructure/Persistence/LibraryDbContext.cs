@@ -29,6 +29,10 @@ public class LibraryDbContext :
     public DbSet<Notification> Notifications =>
         Set<Notification>();
 
+    public DbSet<TelegramConnection>
+        TelegramConnections =>
+            Set<TelegramConnection>();
+
     protected override void OnModelCreating(
         ModelBuilder builder)
     {
@@ -391,6 +395,85 @@ public class LibraryDbContext :
                         x.RecipientUserId)
                     .OnDelete(
                         DeleteBehavior.Restrict);
+            });
+
+        builder.Entity<TelegramConnection>(
+            entity =>
+            {
+                entity.ToTable(
+                    "TelegramConnections");
+
+                entity.HasKey(x =>
+                    x.Id);
+
+                entity.Property(x =>
+                        x.UserId)
+                    .IsRequired()
+                    .HasMaxLength(450);
+
+                entity.Property(x =>
+                        x.ChatId)
+                    .IsRequired(false);
+
+                entity.Property(x =>
+                        x.TelegramUsername)
+                    .IsRequired(false)
+                    .HasMaxLength(100);
+
+                entity.Property(x =>
+                        x.ConnectionCodeHash)
+                    .IsRequired(false)
+                    .HasMaxLength(64);
+
+                entity.Property(x =>
+                        x.ConnectionCodeExpiresAt)
+                    .IsRequired(false);
+
+                entity.Property(x =>
+                        x.ConnectedAt)
+                    .IsRequired(false);
+
+                entity.Property(x =>
+                        x.IsEnabled)
+                    .IsRequired()
+                    .HasDefaultValue(false);
+
+                entity.Property(x =>
+                        x.CreatedAt)
+                    .IsRequired();
+
+                entity.Property(x =>
+                        x.UpdatedAt)
+                    .IsRequired();
+
+                entity.HasIndex(x =>
+                        x.UserId)
+                    .IsUnique()
+                    .HasDatabaseName(
+                        "UX_TelegramConnections_UserId");
+
+                entity.HasIndex(x =>
+                        x.ChatId)
+                    .IsUnique()
+                    .HasFilter(
+                        "[ChatId] IS NOT NULL")
+                    .HasDatabaseName(
+                        "UX_TelegramConnections_ChatId");
+
+                entity.HasIndex(x =>
+                        x.ConnectionCodeHash)
+                    .IsUnique()
+                    .HasFilter(
+                        "[ConnectionCodeHash] IS NOT NULL")
+                    .HasDatabaseName(
+                        "UX_TelegramConnections_ConnectionCodeHash");
+
+                entity.HasOne<ApplicationUser>()
+                    .WithMany()
+                    .HasForeignKey(x =>
+                        x.UserId)
+                    .OnDelete(
+                        DeleteBehavior.Cascade);
             });
     }
 }
