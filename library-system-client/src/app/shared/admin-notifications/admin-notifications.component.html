@@ -86,17 +86,47 @@
             Tüm bildirimler
           </span>
 
-          @if (unreadCount() > 0) {
+          <div class="notification-toolbar-actions">
 
-            <button
-              type="button"
-              class="mark-all-button"
-              (click)="markAllAsRead()"
-            >
-              Tümünü okundu olarak işaretle
-            </button>
+            @if (unreadCount() > 0) {
 
-          }
+              <button
+                type="button"
+                class="mark-all-button"
+                [disabled]="
+                  deletingReadNotifications()
+                "
+                (click)="markAllAsRead()"
+              >
+                Tümünü okundu olarak işaretle
+              </button>
+
+            }
+
+            @if (hasNotifications()) {
+
+              <button
+                type="button"
+                class="delete-read-button"
+                [disabled]="
+                  deletingReadNotifications()
+                "
+                (click)="
+                  deleteReadNotifications()
+                "
+              >
+                @if (
+                  deletingReadNotifications()
+                ) {
+                  Siliniyor...
+                } @else {
+                  Okunmuş mesajları sil
+                }
+              </button>
+
+            }
+
+          </div>
 
         </div>
 
@@ -137,7 +167,7 @@
               </span>
 
               <strong>
-                Bildirimler yüklenemedi
+                İşlem tamamlanamadı
               </strong>
 
               <span>
@@ -164,8 +194,8 @@
               </strong>
 
               <span>
-                Yeni ödünç ve iade işlemleri
-                burada görüntülenecek.
+                Bildirimleriniz burada
+                görüntülenecek.
               </span>
 
             </div>
@@ -185,7 +215,9 @@
                   [class.notification-item-unread]="
                     !notification.isRead
                   "
-                  (click)="markAsRead(notification)"
+                  (click)="
+                    markAsRead(notification)
+                  "
                 >
 
                   <span

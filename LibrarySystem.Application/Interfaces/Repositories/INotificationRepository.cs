@@ -28,4 +28,7 @@ public interface INotificationRepository
     Task MarkAllAsReadAsync(
         string recipientUserId,
         DateTime readAt);
+
+    Task<int> DeleteReadAsync(
+        string recipientUserId);
 }

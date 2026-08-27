@@ -94,6 +94,30 @@ public class NotificationsController :
         return NoContent();
     }
 
+    [HttpDelete("read")]
+    public async Task<IActionResult>
+        DeleteReadNotifications()
+    {
+        var userId =
+            GetCurrentUserId();
+
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var deletedCount =
+            await _notificationService
+                .DeleteReadAsync(
+                    userId);
+
+        return Ok(
+            new
+            {
+                deletedCount
+            });
+    }
+
     private string? GetCurrentUserId()
     {
         return User.FindFirstValue(

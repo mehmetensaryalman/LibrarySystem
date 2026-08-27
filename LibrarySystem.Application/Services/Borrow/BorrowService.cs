@@ -205,7 +205,7 @@ public class BorrowService :
             {
                 Success = false,
                 Message =
-                    "Bu kitap için oluşturduğunuz talebi iptal ettikten sonra 5 dakika beklemelisiniz."
+                    $"Bu kitap için iptal ettiğiniz ödünç talebinin ardından {BorrowRequestRules.CancellationCooldownMinutes} dakika beklemeniz gerekmektedir."
             };
         }
 
@@ -256,42 +256,6 @@ public class BorrowService :
         };
     }
 
-    public async Task<OperationResultDto>
-        CancelBorrowRequestAsync(
-            string userId,
-            int borrowRequestId)
-    {
-        var writeStatus =
-            await _borrowRepository
-                .CancelBorrowRequestAsync(
-                    userId,
-                    borrowRequestId,
-                    DateTime.UtcNow);
-
-        if (
-            writeStatus ==
-            CancelBorrowRequestWriteStatus
-                .PendingRequestNotFound)
-        {
-            return new OperationResultDto
-            {
-                Success = false,
-                Message =
-                    "Bekleyen ödünç talebi bulunamadı, talep size ait değil veya daha önce işlenmiş."
-            };
-        }
-
-        await _realtimeNotifier
-            .NotifyBorrowsChangedAsync();
-
-        return new OperationResultDto
-        {
-            Success = true,
-            Message =
-                $"Ödünç talebiniz başarıyla iptal edildi. Yeni bir ödünç talebi oluşturabilmek için {BorrowRequestRules.CancellationCooldownMinutes} dakika beklemeniz gerekmektedir."
-        };
-    }
-
     public async Task<
         List<MyBorrowRequestResponseDto>>
         GetMyPendingBorrowRequestsAsync(
@@ -323,6 +287,96 @@ public class BorrowService :
                             request.RequestedAt)
                 })
             .ToList();
+    }
+
+    public async Task<OperationResultDto>
+        CancelBorrowRequestAsync(
+            string userId,
+            int borrowRequestId)
+    {
+        var pendingRequest =
+            await _borrowRepository
+                .GetPendingBorrowRequestByIdAsync(
+                    borrowRequestId);
+
+        if (
+            pendingRequest is null ||
+            pendingRequest.UserId !=
+                userId)
+        {
+            return new OperationResultDto
+            {
+                Success = false,
+                Message =
+                    "İptal edilebilecek bekleyen ödünç talebi bulunamadı."
+            };
+        }
+
+        var writeStatus =
+            await _borrowRepository
+                .CancelBorrowRequestAsync(
+                    userId,
+                    borrowRequestId,
+                    DateTime.UtcNow);
+
+        if (
+            writeStatus ==
+            CancelBorrowRequestWriteStatus
+                .PendingRequestNotFound)
+        {
+            return new OperationResultDto
+            {
+                Success = false,
+                Message =
+                    "Bekleyen ödünç talebi bulunamadı veya talep daha önce işlenmiş."
+            };
+        }
+
+        var userEmails =
+            await _borrowRepository
+                .GetUserEmailsAsync(
+                    new[]
+                    {
+                        userId
+                    });
+
+        var userEmail =
+            userEmails.TryGetValue(
+                userId,
+                out var email)
+                ? email
+                : "Bilinmiyor";
+
+        await _notificationService
+            .CreateForAdminsAsync(
+                new CreateAdminNotificationDto
+                {
+                    Type =
+                        NotificationType
+                            .BorrowRequested,
+
+                    Title =
+                        "Ödünç Talebi İptal Edildi",
+
+                    Message =
+                        $"{userEmail} kullanıcısı \"{pendingRequest.Book.Name}\" kitabı için oluşturduğu ödünç talebini iptal etti.",
+
+                    BorrowRecordId =
+                        null
+                });
+
+        await _realtimeNotifier
+            .NotifyAdminNotificationsChangedAsync();
+
+        await _realtimeNotifier
+            .NotifyBorrowsChangedAsync();
+
+        return new OperationResultDto
+        {
+            Success = true,
+            Message =
+                $"Ödünç talebiniz iptal edildi. Aynı kitap için yeniden talep oluşturmak üzere {BorrowRequestRules.CancellationCooldownMinutes} dakika beklemeniz gerekmektedir."
+        };
     }
 
     public async Task<

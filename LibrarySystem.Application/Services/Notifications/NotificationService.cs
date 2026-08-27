@@ -24,8 +24,7 @@ public class NotificationService :
             notificationRepository;
     }
 
-    public async Task<
-        NotificationSummaryDto>
+    public async Task<NotificationSummaryDto>
         GetMySummaryAsync(
             string userId)
     {
@@ -92,6 +91,14 @@ public class NotificationService :
             .MarkAllAsReadAsync(
                 userId,
                 DateTime.UtcNow);
+    }
+
+    public Task<int> DeleteReadAsync(
+        string userId)
+    {
+        return _notificationRepository
+            .DeleteReadAsync(
+                userId);
     }
 
     public async Task

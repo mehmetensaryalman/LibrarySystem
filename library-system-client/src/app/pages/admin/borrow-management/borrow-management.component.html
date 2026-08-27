@@ -26,11 +26,28 @@
         (onClick)="goToBooks()"
       ></p-button>
 
-      <p-button
-        label="Çıkış Yap"
-        styleClass="app-logout-button"
-        (onClick)="logout()"
-      ></p-button>
+      <details class="app-account-menu">
+
+        <summary>
+          Hesap
+        </summary>
+
+        <div class="app-account-menu-panel">
+
+          <a href="/change-password">
+            Parolamı Değiştir
+          </a>
+
+          <button
+            type="button"
+            (click)="logout()"
+          >
+            Çıkış Yap
+          </button>
+
+        </div>
+
+      </details>
 
       <app-admin-notifications>
       </app-admin-notifications>
@@ -79,8 +96,6 @@
 
 
       <p-tabpanels>
-
-        <!-- BEKLEYEN ÖDÜNÇ TALEPLERİ -->
 
         <p-tabpanel value="requests">
 
@@ -197,8 +212,6 @@
 
         </p-tabpanel>
 
-
-        <!-- AKTİF ÖDÜNÇ ALINAN KİTAPLAR -->
 
         <p-tabpanel value="active">
 
@@ -320,8 +333,6 @@
         </p-tabpanel>
 
 
-        <!-- GEÇMİŞ İADELER -->
-
         <p-tabpanel value="history">
 
           <p-table
@@ -402,7 +413,9 @@
 
                 <td>
                   {{
-                    getDeliveryStatus(borrow)
+                    getDeliveryStatus(
+                      borrow
+                    )
                   }}
                 </td>
 

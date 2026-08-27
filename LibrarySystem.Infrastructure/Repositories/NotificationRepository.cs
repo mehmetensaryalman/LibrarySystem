@@ -14,7 +14,8 @@ public class NotificationRepository :
     public NotificationRepository(
         LibraryDbContext dbContext)
     {
-        _dbContext = dbContext;
+        _dbContext =
+            dbContext;
     }
 
     public async Task<
@@ -124,5 +125,17 @@ public class NotificationRepository :
                             x =>
                                 x.ReadAt,
                             readAt));
+    }
+
+    public Task<int> DeleteReadAsync(
+        string recipientUserId)
+    {
+        return _dbContext
+            .Notifications
+            .Where(x =>
+                x.RecipientUserId ==
+                    recipientUserId &&
+                x.IsRead)
+            .ExecuteDeleteAsync();
     }
 }

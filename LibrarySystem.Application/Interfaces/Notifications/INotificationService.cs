@@ -15,6 +15,9 @@ public interface INotificationService
     Task MarkAllAsReadAsync(
         string userId);
 
+    Task<int> DeleteReadAsync(
+        string userId);
+
     Task CreateForAdminsAsync(
         CreateAdminNotificationDto request);
 }

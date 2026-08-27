@@ -1,6 +1,7 @@
 import {
   Component,
   DestroyRef,
+  HostListener,
   OnInit,
   computed,
   signal
@@ -43,6 +44,9 @@ export class AdminNotificationsComponent
   readonly loading =
     signal(false);
 
+  readonly deletingReadNotifications =
+    signal(false);
+
   readonly loadError =
     signal('');
 
@@ -60,6 +64,11 @@ export class AdminNotificationsComponent
   readonly notifications =
     computed(() =>
       this.summary().notifications
+    );
+
+  readonly hasNotifications =
+    computed(() =>
+      this.notifications().length > 0
     );
 
   readonly badgeText =
@@ -99,6 +108,15 @@ export class AdminNotificationsComponent
       });
   }
 
+  @HostListener(
+    'document:keydown.escape'
+  )
+  onEscapePressed(): void {
+    if (this.panelOpen()) {
+      this.closePanel();
+    }
+  }
+
   togglePanel(): void {
     this.panelOpen.update(
       value => !value
@@ -114,7 +132,10 @@ export class AdminNotificationsComponent
       AdminNotification
   ): void {
 
-    if (notification.isRead) {
+    if (
+      notification.isRead ||
+      this.deletingReadNotifications()
+    ) {
       return;
     }
 
@@ -142,7 +163,8 @@ export class AdminNotificationsComponent
 
   markAllAsRead(): void {
     if (
-      this.unreadCount() === 0
+      this.unreadCount() === 0 ||
+      this.deletingReadNotifications()
     ) {
       return;
     }
@@ -162,6 +184,47 @@ export class AdminNotificationsComponent
         error: () => {
           this.loadError.set(
             'Bildirimler güncellenemedi.'
+          );
+        }
+      });
+  }
+
+  deleteReadNotifications():
+    void {
+
+    if (
+      !this.hasNotifications() ||
+      this.deletingReadNotifications()
+    ) {
+      return;
+    }
+
+    this.deletingReadNotifications
+      .set(true);
+
+    this.loadError.set('');
+
+    this.notificationService
+      .deleteReadNotifications()
+      .pipe(
+        takeUntilDestroyed(
+          this.destroyRef
+        )
+      )
+      .subscribe({
+        next: () => {
+          this.deletingReadNotifications
+            .set(false);
+
+          this.loadNotifications();
+        },
+
+        error: () => {
+          this.deletingReadNotifications
+            .set(false);
+
+          this.loadError.set(
+            'Okunmuş bildirimler silinemedi.'
           );
         }
       });

@@ -14,6 +14,10 @@ import {
   NotificationSummary
 } from '../models/notification.models';
 
+export interface DeleteReadNotificationsResponse {
+  deletedCount: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -29,6 +33,7 @@ export class NotificationService {
 
   getSummary():
     Observable<NotificationSummary> {
+
     return this.http
       .get<NotificationSummary>(
         this.apiUrl
@@ -38,6 +43,7 @@ export class NotificationService {
   markAsRead(
     notificationId: number
   ): Observable<void> {
+
     return this.http
       .put<void>(
         `${this.apiUrl}/${notificationId}/read`,
@@ -47,10 +53,20 @@ export class NotificationService {
 
   markAllAsRead():
     Observable<void> {
+
     return this.http
       .put<void>(
         `${this.apiUrl}/read-all`,
         {}
+      );
+  }
+
+  deleteReadNotifications():
+    Observable<DeleteReadNotificationsResponse> {
+
+    return this.http
+      .delete<DeleteReadNotificationsResponse>(
+        `${this.apiUrl}/read`
       );
   }
 }
