@@ -6,6 +6,7 @@ using LibrarySystem.Application.Common.Constants;
 using LibrarySystem.Application.Interfaces.Auth;
 using LibrarySystem.Application.Interfaces.Books;
 using LibrarySystem.Application.Interfaces.Borrow;
+using LibrarySystem.Application.Interfaces.Email;
 using LibrarySystem.Application.Interfaces.Notifications;
 using LibrarySystem.Application.Interfaces.Realtime;
 using LibrarySystem.Application.Interfaces.Repositories;
@@ -18,6 +19,7 @@ using LibrarySystem.Infrastructure.Repositories;
 using LibrarySystem.Infrastructure.Seed;
 using LibrarySystem.Infrastructure.Services.Auth;
 using LibrarySystem.Infrastructure.Services.Books;
+using LibrarySystem.Infrastructure.Services.Email;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -77,6 +79,14 @@ builder.Services
         LibraryDbContext>()
     .AddDefaultTokenProviders();
 
+builder.Services.Configure<
+    DataProtectionTokenProviderOptions>(
+    options =>
+    {
+        options.TokenLifespan =
+            TimeSpan.FromMinutes(30);
+    });
+
 var jwtKey =
     builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException(
@@ -109,6 +119,10 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<
     IAuthService,
     AuthService>();
+
+builder.Services.AddScoped<
+    IEmailService,
+    SmtpEmailService>();
 
 builder.Services.AddScoped<
     IBookRepository,
@@ -178,14 +192,23 @@ builder.Services
         options.TokenValidationParameters =
             new TokenValidationParameters
             {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = true,
+                ValidateIssuer =
+                    true,
+
+                ValidateAudience =
+                    true,
+
+                ValidateLifetime =
+                    true,
+
                 ValidateIssuerSigningKey =
                     true,
 
-                ValidIssuer = jwtIssuer,
-                ValidAudience = jwtAudience,
+                ValidIssuer =
+                    jwtIssuer,
+
+                ValidAudience =
+                    jwtAudience,
 
                 IssuerSigningKey =
                     new SymmetricSecurityKey(
@@ -193,7 +216,8 @@ builder.Services
                             .GetBytes(
                                 jwtKey)),
 
-                ClockSkew = TimeSpan.Zero
+                ClockSkew =
+                    TimeSpan.Zero
             };
 
         options.Events =
@@ -257,7 +281,8 @@ builder.Services.AddOpenApi(options =>
         BearerSecuritySchemeTransformer>();
 });
 
-var app = builder.Build();
+var app =
+    builder.Build();
 
 using (var scope =
        app.Services.CreateScope())
@@ -305,7 +330,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseCors("Frontend");
+app.UseCors(
+    "Frontend");
 
 app.UseAuthentication();
 
@@ -315,6 +341,7 @@ app.MapControllers();
 
 app.MapHub<LibraryHub>(
         "/hubs/library")
-    .RequireCors("Frontend");
+    .RequireCors(
+        "Frontend");
 
 app.Run();

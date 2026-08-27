@@ -1,6 +1,5 @@
 import {
   Component,
-  OnInit,
   signal
 } from '@angular/core';
 
@@ -9,7 +8,6 @@ import {
 } from '@angular/forms';
 
 import {
-  Router,
   RouterLink
 } from '@angular/router';
 
@@ -22,38 +20,27 @@ import {
 } from 'primeng/inputtext';
 
 import {
-  PasswordModule
-} from 'primeng/password';
-
-import {
   AuthService
 } from '../../../core/services/auth.service';
 
 @Component({
-  selector: 'app-login',
+  selector: 'app-forgot-password',
 
   imports: [
     FormsModule,
     RouterLink,
     ButtonModule,
-    InputTextModule,
-    PasswordModule
+    InputTextModule
   ],
 
   templateUrl:
-    './login.component.html',
+    './forgot-password.component.html',
 
   styleUrl:
-    './login.component.scss'
+    './forgot-password.component.scss'
 })
-export class LoginComponent
-  implements OnInit {
-
+export class ForgotPasswordComponent {
   email = '';
-
-  password = '';
-
-  rememberMe = false;
 
   readonly loading =
     signal(false);
@@ -61,27 +48,18 @@ export class LoginComponent
   readonly errorMessage =
     signal('');
 
+  readonly successMessage =
+    signal('');
+
   constructor(
     private readonly authService:
-      AuthService,
-
-    private readonly router:
-      Router
+      AuthService
   ) {
   }
 
-  ngOnInit(): void {
-    if (
-      this.authService.isLoggedIn()
-    ) {
-      void this.router.navigate(
-        ['/books']
-      );
-    }
-  }
-
-  login(): void {
+  requestPasswordReset(): void {
     this.errorMessage.set('');
+    this.successMessage.set('');
 
     const email =
       this.email.trim();
@@ -102,38 +80,25 @@ export class LoginComponent
       return;
     }
 
-    if (!this.password) {
-      this.errorMessage.set(
-        'Şifre zorunludur.'
-      );
-
-      return;
-    }
-
     this.loading.set(true);
 
     this.authService
-      .login(
-        {
-          email,
-          password:
-            this.password
-        },
-        this.rememberMe
-      )
+      .forgotPassword({
+        email
+      })
       .subscribe({
         next: result => {
           this.loading.set(false);
 
-          if (result.success) {
-            void this.router.navigate(
-              ['/books']
+          if (!result.success) {
+            this.errorMessage.set(
+              result.message
             );
 
             return;
           }
 
-          this.errorMessage.set(
+          this.successMessage.set(
             result.message
           );
         },
@@ -143,7 +108,7 @@ export class LoginComponent
 
           this.errorMessage.set(
             error.error?.message ??
-            'E-posta veya şifre hatalı.'
+            'Parola sıfırlama isteği gönderilemedi.'
           );
         }
       });

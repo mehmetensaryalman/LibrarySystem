@@ -1,14 +1,42 @@
-import { Routes } from '@angular/router';
+import {
+  Routes
+} from '@angular/router';
 
-import { authGuard } from './core/guards/auth.guard';
-import { adminGuard } from './core/guards/admin.guard';
+import {
+  authGuard
+} from './core/guards/auth.guard';
 
-import { LoginComponent } from './pages/auth/login/login.component';
-import { RegisterComponent } from './pages/auth/register/register.component';
+import {
+  adminGuard
+} from './core/guards/admin.guard';
 
-import { BookListComponent } from './pages/books/book-list/book-list.component';
+import {
+  LoginComponent
+} from './pages/auth/login/login.component';
 
-import { MyBooksComponent } from './pages/my-books/my-books.component';
+import {
+  RegisterComponent
+} from './pages/auth/register/register.component';
+
+import {
+  ForgotPasswordComponent
+} from './pages/auth/forgot-password/forgot-password.component';
+
+import {
+  ResetPasswordComponent
+} from './pages/auth/reset-password/reset-password.component';
+
+import {
+  ChangePasswordComponent
+} from './pages/auth/change-password/change-password.component';
+
+import {
+  BookListComponent
+} from './pages/books/book-list/book-list.component';
+
+import {
+  MyBooksComponent
+} from './pages/my-books/my-books.component';
 
 import {
   AdminDashboardComponent
@@ -25,7 +53,7 @@ import {
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: 'login',
+    redirectTo: 'books',
     pathMatch: 'full'
   },
   {
@@ -35,6 +63,21 @@ export const routes: Routes = [
   {
     path: 'register',
     component: RegisterComponent
+  },
+  {
+    path: 'forgot-password',
+    component: ForgotPasswordComponent
+  },
+  {
+    path: 'reset-password',
+    component: ResetPasswordComponent
+  },
+  {
+    path: 'change-password',
+    component: ChangePasswordComponent,
+    canActivate: [
+      authGuard
+    ]
   },
   {
     path: 'books',
@@ -76,6 +119,6 @@ export const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: 'login'
+    redirectTo: 'books'
   }
 ];

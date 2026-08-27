@@ -1,5 +1,10 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import {
+  Injectable
+} from '@angular/core';
+
+import {
+  HttpClient
+} from '@angular/common/http';
 
 import {
   Observable,
@@ -12,6 +17,11 @@ import {
   LoginRequest,
   RegisterRequest
 } from '../models/auth.models';
+
+import {
+  ForgotPasswordRequest,
+  ResetPasswordRequest
+} from '../models/password-reset.models';
 
 @Injectable({
   providedIn: 'root'
@@ -30,22 +40,27 @@ export class AuthService {
     this.logoutSubject.asObservable();
 
   constructor(
-    private readonly http: HttpClient
+    private readonly http:
+      HttpClient
   ) {
   }
 
   register(
     request: RegisterRequest
   ): Observable<AuthResult> {
-    return this.http.post<AuthResult>(
-      `${this.apiUrl}/register`,
-      request
-    );
+
+    return this.http
+      .post<AuthResult>(
+        `${this.apiUrl}/register`,
+        request
+      );
   }
 
   login(
-    request: LoginRequest
+    request: LoginRequest,
+    rememberMe: boolean = false
   ): Observable<AuthResult> {
+
     return this.http
       .post<AuthResult>(
         `${this.apiUrl}/login`,
@@ -57,18 +72,45 @@ export class AuthService {
             result.success &&
             result.token
           ) {
-            localStorage.setItem(
-              this.tokenKey,
-              result.token
+            this.storeToken(
+              result.token,
+              rememberMe
             );
           }
         })
       );
   }
 
+  forgotPassword(
+    request: ForgotPasswordRequest
+  ): Observable<AuthResult> {
+
+    return this.http
+      .post<AuthResult>(
+        `${this.apiUrl}/forgot-password`,
+        request
+      );
+  }
+
+  resetPassword(
+    request: ResetPasswordRequest
+  ): Observable<AuthResult> {
+
+    return this.http
+      .post<AuthResult>(
+        `${this.apiUrl}/reset-password`,
+        request
+      );
+  }
+
   getToken(): string | null {
-    return localStorage.getItem(
-      this.tokenKey
+    return (
+      localStorage.getItem(
+        this.tokenKey
+      ) ??
+      sessionStorage.getItem(
+        this.tokenKey
+      )
     );
   }
 
@@ -90,6 +132,7 @@ export class AuthService {
       expirationTime <= Date.now()
     ) {
       this.logout();
+
       return false;
     }
 
@@ -97,9 +140,7 @@ export class AuthService {
   }
 
   logout(): void {
-    localStorage.removeItem(
-      this.tokenKey
-    );
+    this.clearStoredToken();
 
     this.logoutSubject.next();
   }
@@ -120,9 +161,10 @@ export class AuthService {
         return [];
       }
 
-      let payload = parts[1]
-        .replace(/-/g, '+')
-        .replace(/_/g, '/');
+      let payload =
+        parts[1]
+          .replace(/-/g, '+')
+          .replace(/_/g, '/');
 
       const padding =
         payload.length % 4;
@@ -163,9 +205,40 @@ export class AuthService {
       .includes('Admin');
   }
 
+  private storeToken(
+    token: string,
+    rememberMe: boolean
+  ): void {
+
+    this.clearStoredToken();
+
+    const storage =
+      rememberMe
+        ? localStorage
+        : sessionStorage;
+
+    storage.setItem(
+      this.tokenKey,
+      token
+    );
+  }
+
+  private clearStoredToken():
+    void {
+
+    localStorage.removeItem(
+      this.tokenKey
+    );
+
+    sessionStorage.removeItem(
+      this.tokenKey
+    );
+  }
+
   private getTokenExpirationTime(
     token: string
   ): number | null {
+
     try {
       const parts =
         token.split('.');
@@ -174,9 +247,10 @@ export class AuthService {
         return null;
       }
 
-      let payload = parts[1]
-        .replace(/-/g, '+')
-        .replace(/_/g, '/');
+      let payload =
+        parts[1]
+          .replace(/-/g, '+')
+          .replace(/_/g, '/');
 
       const padding =
         payload.length % 4;

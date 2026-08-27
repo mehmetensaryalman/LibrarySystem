@@ -2,57 +2,99 @@ import {
   HttpErrorResponse,
   HttpInterceptorFn
 } from '@angular/common/http';
-import { inject } from '@angular/core';
-import { Router } from '@angular/router';
+
+import {
+  inject
+} from '@angular/core';
+
+import {
+  Router
+} from '@angular/router';
+
 import {
   catchError,
   throwError
 } from 'rxjs';
 
-export const authInterceptor: HttpInterceptorFn =
-  (request, next) => {
-    const router = inject(Router);
+import {
+  AuthService
+} from '../services/auth.service';
 
-    const token =
-      localStorage.getItem('library_token');
+export const authInterceptor:
+  HttpInterceptorFn =
+    (request, next) => {
 
-    const isAuthRequest =
-      request.url.includes('/api/auth/');
+      const router =
+        inject(Router);
 
-    const isPublicBooksRequest =
-      request.method === 'GET' &&
-      request.url.endsWith('/api/books');
+      const authService =
+        inject(AuthService);
 
-    let outgoingRequest = request;
+      const token =
+        authService.getToken();
 
-    if (
-      token &&
-      !isAuthRequest &&
-      !isPublicBooksRequest
-    ) {
-      outgoingRequest = request.clone({
-        setHeaders: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-    }
+      const publicAuthEndpoints = [
+        '/api/auth/register',
+        '/api/auth/login',
+        '/api/auth/forgot-password',
+        '/api/auth/reset-password'
+      ];
 
-    return next(outgoingRequest).pipe(
-      catchError(
-        (error: HttpErrorResponse) => {
-          if (
-            error.status === 401 &&
-            !isAuthRequest
-          ) {
-            localStorage.removeItem(
-              'library_token'
+      const isPublicAuthRequest =
+        publicAuthEndpoints.some(
+          endpoint =>
+            request.url.includes(
+              endpoint
+            )
+        );
+
+      const isPublicBooksRequest =
+        request.method === 'GET' &&
+        request.url.endsWith(
+          '/api/books'
+        );
+
+      let outgoingRequest =
+        request;
+
+      if (
+        token &&
+        !isPublicAuthRequest &&
+        !isPublicBooksRequest
+      ) {
+        outgoingRequest =
+          request.clone({
+            setHeaders: {
+              Authorization:
+                `Bearer ${token}`
+            }
+          });
+      }
+
+      return next(
+        outgoingRequest
+      ).pipe(
+        catchError(
+          (
+            error:
+              HttpErrorResponse
+          ) => {
+
+            if (
+              error.status === 401 &&
+              !isPublicAuthRequest
+            ) {
+              authService.logout();
+
+              void router.navigate(
+                ['/login']
+              );
+            }
+
+            return throwError(
+              () => error
             );
-
-            void router.navigate(['/login']);
           }
-
-          return throwError(() => error);
-        }
-      )
-    );
-  };
+        )
+      );
+    };
