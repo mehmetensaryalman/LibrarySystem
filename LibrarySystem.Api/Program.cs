@@ -142,6 +142,9 @@ builder.Services.AddSingleton<
 builder.Services.AddHostedService<
     TelegramBotPollingService>();
 
+builder.Services.AddHostedService<
+    TelegramBorrowReminderService>();
+
 builder.Services.AddScoped<
     ITelegramConnectionRepository,
     TelegramConnectionRepository>();

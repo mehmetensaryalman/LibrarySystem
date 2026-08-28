@@ -37,6 +37,24 @@ public class BorrowRecord
         set;
     }
 
+    public DateTime? ThreeDaysReminderSentAt
+    {
+        get;
+        set;
+    }
+
+    public DateTime? DueDateReminderSentAt
+    {
+        get;
+        set;
+    }
+
+    public DateTime? OverdueReminderSentAt
+    {
+        get;
+        set;
+    }
+
     public Book Book
     {
         get;

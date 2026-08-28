@@ -34,19 +34,19 @@ public class BorrowService :
         IRealtimeNotifier realtimeNotifier,
         ITelegramNotificationSender
             telegramNotificationSender)
-        {
-            _borrowRepository =
-                borrowRepository;
+    {
+        _borrowRepository =
+            borrowRepository;
 
-            _notificationService =
-                notificationService;
+        _notificationService =
+            notificationService;
 
-            _realtimeNotifier =
-                realtimeNotifier;
+        _realtimeNotifier =
+            realtimeNotifier;
 
-            _telegramNotificationSender =
-                telegramNotificationSender;
-        }
+        _telegramNotificationSender =
+            telegramNotificationSender;
+    }
 
     public async Task<OperationResultDto>
         BorrowAsync(
@@ -848,6 +848,26 @@ public class BorrowService :
 
         await _realtimeNotifier
             .NotifyBorrowsChangedAsync();
+
+        var telegramMessage =
+            "✅ İade İşleminiz Tamamlandı\n\n" +
+            $"\"{activeBorrow.Book.Name}\" kitabının iade işlemi kütüphane görevlisi tarafından onaylandı.";
+
+        if (writeResult.PenaltyDays > 0)
+        {
+            telegramMessage +=
+                $"\n\nKitap gecikmeli iade edildiği için {writeResult.PenaltyDays} günlük ödünç alma cezası uygulanmıştır.";
+        }
+        else
+        {
+            telegramMessage +=
+                "\n\nKitabı zamanında teslim ettiğiniz için teşekkür ederiz.";
+        }
+
+        await _telegramNotificationSender
+            .SendToUserAsync(
+                activeBorrow.UserId,
+                telegramMessage);
 
         if (writeResult.PenaltyDays > 0)
         {

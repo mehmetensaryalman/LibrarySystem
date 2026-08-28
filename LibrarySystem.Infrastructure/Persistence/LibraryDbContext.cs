@@ -117,6 +117,17 @@ public class LibraryDbContext :
                         x.IsReturned)
                     .IsRequired();
 
+                entity.Property(x =>
+                        x.ThreeDaysReminderSentAt)
+                    .IsRequired(false);
+
+                entity.Property(x =>
+                        x.DueDateReminderSentAt)
+                    .IsRequired(false);
+                entity.Property(x =>
+                        x.OverdueReminderSentAt)
+                    .IsRequired(false);
+
                 entity.HasIndex(x => new
                 {
                     x.UserId,
