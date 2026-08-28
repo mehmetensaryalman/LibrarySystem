@@ -51,12 +51,14 @@ public class BorrowRepository :
     }
 
     public async Task<BorrowRecord?>
-        GetActiveBorrowByIdAsync(
-            int borrowRecordId)
+    GetActiveBorrowByIdAsync(
+        int borrowRecordId)
     {
         return await _dbContext
             .BorrowRecords
             .AsNoTracking()
+            .Include(record =>
+                record.Book)
             .FirstOrDefaultAsync(record =>
                 record.Id ==
                     borrowRecordId &&
